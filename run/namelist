@@ -1,0 +1,13 @@
+&NUMERICS
+time_flux = 3  ! length of flux corrections run [yrs]
+time_ctrl = 5  ! length of control run  [yrs]
+time_scnr = 5  ! length of scenario run [yrs]
+/
+&PHYSICS
+ log_exp  = 12 ! complete GREB model; 2xCO2 forcing
+ log_rain = 0
+ log_eva  = 0
+ log_qflux = 0
+ log_adv_scheme = 0
+ log_clim = 1
+/
