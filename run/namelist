@@ -4,7 +4,7 @@ time_ctrl = 5  ! length of control run  [yrs]
 time_scnr = 5  ! length of scenario run [yrs]
 /
 &PHYSICS
- log_exp  = 12 ! complete GREB model; 2xCO2 forcing
+ log_exp  = 40 ! complete GREB model; 2xCO2 forcing
  log_rain = 0
  log_eva  = 0
  log_qflux = 0

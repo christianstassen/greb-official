@@ -12,9 +12,10 @@ This repository contains the GREB code for the paper 'A Hydrological Cycle Model
 
  1. To download the code via github click on the 'clone or download' tab on the top.
  2. The downloaded zip-archive contains the model source code and all input files.
- 3. The main file to execute is 'run/greb.web-public.hydro.com'.
- 4. To execute the main file try '.run/greb.web-public.hydro.com' or 'sh run/greb.web-public.hydro.com'
+ 3. The main file to execute is 'run/greb.web-public.hydro-simple.com'.
+ 4. To execute the main file try '.run/greb.web-public.hydro-simple.com' or 'sh run/greb.web-public.hydro-simple.com'
  5. The main file also contains several settings (i.e. what experiment, how many years to simulate, etc)
+ 6. To run all experiments of the paper you can try 'sh run/greb.web-public.hydro-all.com'
 
 * Configuration
 
