@@ -193,8 +193,8 @@ subroutine greb_model
   !< Output name
   add_name = ''
   if (log_output == 0)     add_name = trim(adjustl(add_name)) //'.' // 'direct'
-  if (log_adv_scheme == 0) add_name = trim(adjustl(add_name)) //'.' // 'origadv'
-  if (log_adv_scheme == 1) add_name = trim(adjustl(add_name)) //'.' // 'convergence'
+  if (log_adv_scheme == -1) add_name = trim(adjustl(add_name)) //'.' // 'origadv'
+  if (log_adv_scheme == 0) add_name = trim(adjustl(add_name)) //'.' // 'convergence'
   if (log_clim == 0) add_name = trim(adjustl(add_name)) // '.' // 'origclim'
   if (log_clim == 1) add_name = trim(adjustl(add_name)) // '.' // 'newclim'
 
