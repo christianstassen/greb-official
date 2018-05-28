@@ -1,0 +1,36 @@
+
+A few notes on how to run the GREB model, which is the model that is used on the MSCM homepage:
+
+The only file you normally have to modify to compile and run the model is the run file. There are three run files. The "run.greb.decon_mean_climate.csh" runs the experiments shown on the MSCM homepage in the "deconstruct the mean climate" section, the "run.greb.scenarios.csh" all experiments of the "climate change scenarios" section and the "run.greb.decon2xco2.csh" all experiments of the "deconstruct the response 2xCO2" section.
+
+1) Compling: you need a FORTRAN compiler to compile the code (e.g. gfortran, ifort, g95). Uncomment in the run script the line that fits to your operating system and FORTRAN compiler. Depending on the complier you may have some option to opitmize the performance (speed) of the model. If you have problems compiling the code, remove one of the compiling options (e.g. -fopenmp, -march=native, -O3, -ffast-math, -funroll-loops ) and try it again. These compiling options are not mandatory. They "only" increase the performance (speed) of the model. 
+
+2) If you get the an error message similar to the following, when the input is read: 
+"Fortran runtime error: I/O past end of record on unformatted file"
+then you need to change in the file greb.model.mscm.f90 in line 101 
+
+  integer            :: ireal     = 4         ! record length for IO (machine dependent)
+to 
+  integer            :: ireal     = 1         ! record length for IO (machine dependent)
+
+On MacBook Pro and Linux (e.g. Ubuntu) it normally needs to be ireal = 4, but other maschines it can be ireal = 1.
+
+3) Run scripts: run.greb.decon_mean_climate.csh, run.greb.scenarios.csh and run.greb.decon2xco2.csh
+You can set some input parameters in the run script (e.g. switch on or off climate components, choose different scenarios). You can execute the shell script to compile and run the model with the following comand: 
+./run.greb.decon_mean_climate.csh
+
+4) The actual run is done in the directory "work" and after the experiment is finished the output is moved to the directory "output".
+
+5) Performance: Without any optimization by the compiler the model runs on MacBook Pro or Linux laptop 1yr simulation in about 30sec. On a standard PC with opitimization (paralellization) is runs 1yr simulation in less than 1sec
+
+6) Output is in Grads format, consisting of a binary file (*.bin) and a descrition file (*.ctl) and can be transformed with Climate Data Operators (CDO https://code.zmaw.de/projects/cdo ) into netcdf format
+e.g. cdo -f nc import_binary filename.ctl filename.nc 
+
+7) A short explanation of the source code is given in the mscm_fortran_info.pdf
+
+Good luck and have fun!
+
+Dietmar Dommenget, Tobias Bayr and the MSCM team
+
+
+
