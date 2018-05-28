@@ -134,6 +134,11 @@ module mo_physics
   integer  :: log_hadv        = 1              ! process control Advection of heat
   integer  :: log_vdif        = 1              ! process control Diffusion of vapor
   integer  :: log_vadv        = 1              ! process control Advection of vapor
+! switches for the hydrological cycle
+  integer  :: log_rain        = 0              ! process control precipitation parameterisation
+  integer  :: log_eva         = 0              ! process control evaporation parameterisation
+  integer  :: log_adv         = 0              ! process control advection parameterisation
+  integer  :: log_clim        = 0              ! process control for reference climatology
 
 ! parameters for scenarios
   real     :: dradius   = 0.		 ! deviations from actual earth radius in %
@@ -174,13 +179,17 @@ module mo_physics
   parameter( z_vapor   = 5000. )                   ! scaling height atmos. water vapor diffusion
   real :: r_qviwv   = 2.6736e3                     ! regres. factor between viwv and q_air  [kg/m^3]
 
+  ! physical paramter (rainfall)
+  real :: c_q, c_rq, c_omega, c_omegastd
+
 ! parameter emisivity
   real, dimension(10) :: p_emi = (/9.0721, 106.7252, 61.5562, 0.0179, 0.0028,     &
 &                                             0.0570, 0.3462, 2.3406, 0.7032, 1.0662/)
 
 ! declare climate fields
   real, dimension(xdim,ydim)          ::  z_topo, glacier,z_ocean
-  real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, qclim, mldclim, Toclim, cldclim
+  real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim, omegastdclim, wsclim
+  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim
   real, dimension(xdim,ydim,nstep_yr) ::  TF_correct, qF_correct, ToF_correct, swetclim, dTrad
   real, dimension(ydim,nstep_yr)      ::  sw_solar, sw_solar_ctrl, sw_solar_scnr
   real, dimension(xdim,ydim)          ::  co2_part      = 1.0
@@ -199,11 +208,11 @@ module mo_physics
 
   namelist / physics / log_exp, ct_sens, da_ice, a_no_ice, a_cloud, co_turb, kappa, 	&
 &                      p_emi, Tl_ice1, Tl_ice2, To_ice1, To_ice2, r_qviwv,          	&
-&		       log_cloud_dmc, log_ocean_dmc, log_atmos_dmc, log_co2_dmc,        &
-&                      log_hydro_dmc, log_qflux_dmc, 					&
+&		                   log_cloud_dmc, log_ocean_dmc, log_atmos_dmc, log_co2_dmc,        &
+&                      log_hydro_dmc, log_qflux_dmc, 					                          &
 &                      log_topo_drsp, log_cloud_drsp, log_humid_drsp, log_hydro_drsp,   &
 &                      log_ocean_drsp, log_ice, log_hdif, log_hadv, log_vdif, log_vadv, &
-& 		       S0_var, dradius
+& 		                 S0_var, dradius, log_rain, log_eva, log_adv, log_clim
 
 end module mo_physics
 
@@ -300,6 +309,22 @@ subroutine greb_model
      vclim_p = vclim
   end where
 
+  ! initialize the rainfall parameterisation
+  select case( log_rain )
+  case(-1) ! Original GREB
+      c_q=1.; c_rq= 0.; c_omega=0.; c_omegastd=0.
+    case(1) ! Adding relative humidity (rq)
+      c_q=-1.391649; c_rq=3.018774; c_omega= 0.; c_omegastd=0.
+    case(2) ! Adding omega
+      c_q=0.862162; c_rq=0.; c_omega=-29.02096; c_omegastd=0.
+    case(3) ! Adding rq and omega
+      c_q=-0.2685845; c_rq=1.4591853; c_omega=-26.9858807; c_omegastd=0.
+    case(0) ! Best GREB
+      c_q=-1.88; c_rq=2.25; c_omega=-17.69; c_omegastd=59.07 ! Rainfall parameters (ERA-Interim)
+      if (log_clim == 0) then
+        c_q=-1.27; c_rq=1.99; c_omega=-16.54; c_omegastd=21.15 ! Rainfall parameters (NCEP)
+      end if
+  end select
 
 ! compute Q-flux corrections
   if ( log_exp .ne. 1 ) then
@@ -363,6 +388,9 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      sw_solar = rS0*sw_solar
    end if
 
+  if ( log_exp .ge. 230 .and. log_exp .le. 239 ) call enso()
+  if ( log_exp .eq. 240 .and. log_exp .le. 249 ) call climate_change()
+
   print*,'% SCENARIO EXP: ',log_exp,'  time=', time_scnr,'yr'
   print 1001, "YEAR", "CO2[ppm]", "SW[W/m^2]", "global mean[C]", "Trop Pac[C]", "Hamburg[C]", "North Pole[C]" !TB
   Ts1 = Ts_ini; Ta1 = Ta_ini; q1 = q_ini; To1 = To_ini                     ! initialize fields
@@ -370,7 +398,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
   if (log_exp .ge. 35 .and. log_exp .le. 37) year=1.
 
   do it=1, time_scnr*nstep_yr                                              ! main time loop
-     call forcing(it, year, CO2)
+     call forcing(it, year, CO2, Ts1)
      call time_loop(it,isrec, year, CO2, irec, mon, 42, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
 
      Ts1=Ts0; Ta1=Ta0; q1=q0; To1=To0
@@ -1128,13 +1156,16 @@ subroutine advection(T1, dX_advec,h_scl, wz)
 end subroutine advection
 
 !+++++++++++++++++++++++++++++++++++++++
-subroutine forcing(it, year, CO2)
+subroutine forcing(it, year, CO2, Tsurf)
 !+++++++++++++++++++++++++++++++++++++++
 
   USE mo_numerics,    ONLY: xdim, ydim, ndays_yr, ndt_days, nstep_yr
   USE mo_physics,     ONLY: log_exp, sw_solar, sw_solar_ctrl, sw_solar_scnr,     &
-&                           co2_part, co2_part_scn, z_topo
+&                           co2_part, co2_part_scn, z_topo, ityr, Tclim
   USE mo_diagnostics,  ONLY: icmn_ctrl
+
+  ! input fields
+  real, dimension(xdim,ydim)  :: Tsurf
 
   ! declare variables
   real, dimension(xdim,ydim) 	:: icmn_ctrl1
@@ -1216,16 +1247,206 @@ subroutine forcing(it, year, CO2)
 
 ! IPCC RCP scenarios
   if( log_exp .ge. 96 .and. log_exp .le. 99 ) then ! IPCC RCP scenarios
-      if(mod(it,nstep_yr) .eq. 1) read (23,*) t, CO2
+      if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
   end if
 
 ! own CO2 scenario
   if( log_exp .eq. 100 ) then
-      if(mod(it,nstep_yr) .eq. 1) read (23,*) t, CO2
+      if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
   end if
+
+! Forced ENSO run
+  if( log_exp .ge. 230 .and. log_exp .le. 239 ) Tsurf = Tclim(:,:,ityr)
+! Forced Climate Change run
+  if( log_exp .ge. 240 .and. log_exp .le. 249 ) Tsurf = Tclim(:,:,ityr)
 
 
 end subroutine forcing
+
+!+++++++++++++++++++++++++++++++++++++++
+subroutine climate_change()
+!+++++++++++++++++++++++++++++++++++++++
+! Routine to do climate change experiments (section 4.3 in Stassen et al 2018)
+  use mo_physics
+  use mo_numerics
+
+  implicit none
+  real, dimension(xdim,ydim,nstep_yr) :: Tclim_anom, uclim_anom, vclim_anom, & ! Dummies for the anomalies
+  &                                      omegaclim_anom, wsclim_anom
+
+  integer :: i
+
+  !Print
+  write(*,*) '                              '
+  write(*,*) '       \  \  \   /\           '
+  write(*,*) '        \  \  \ /  \          '
+  write(*,*) '         \  \  /    \         '
+  write(*,*) '          \  \/      \        '
+  write(*,*) '           \  |       |       '
+  write(*,*) '            \ |  ~ ~  |       '
+  write(*,*) '             \|  ~ ~  |       '
+  write(*,*) '                              '
+  write(*,*) '            Climate Change    '
+  write(*,*) '                              '
+
+
+  ! Initially set anomalies to zero
+  Tclim_anom=0.; uclim_anom=0.; vclim_anom=0.; omegaclim_anom=0.; wsclim_anom=0.
+
+  !< If exp 240: CC -> Prescribe Tsurf, uwind, vwind, omega
+  if ( log_exp == 240 ) then
+
+    ! Read in anomalies
+    open(31,file='../input/tsurf.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(32,file='../input/zonal.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(33,file='../input/meridional.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(34,file='../input/omega.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(35,file='../input/windspeed.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    do i=1,nstep_yr
+      read(31,rec=i) Tclim_anom(:,:,i)
+      read(32,rec=i) uclim_anom(:,:,i)
+      read(33,rec=i) vclim_anom(:,:,i)
+      read(34,rec=i) omegaclim_anom(:,:,i)
+      read(35,rec=i) wsclim_anom(:,:,i)
+    end do
+
+    ! Add anomalies on top
+    Tclim       = Tclim + Tclim_anom
+    uclim       = uclim + uclim_anom
+    vclim       = vclim + vclim_anom
+    omegaclim  = omegaclim + omegaclim_anom
+    wsclim = wsclim + wsclim_anom
+
+    ! Close files
+    close(31, status='keep'); close(32, status='keep'); close(33, status='keep')
+    close(34, status='keep'); close(35, status='keep')
+
+  end if !exp 240
+
+  where (uclim(:,:,:) >= 0.0)
+    uclim_m = uclim
+    uclim_p = 0.0
+  else where
+    uclim_m = 0.0
+    uclim_p = uclim
+  end where
+  where (vclim(:,:,:) >= 0.0)
+    vclim_m = vclim
+    vclim_p = 0.0
+  else where
+    vclim_m = 0.0
+    vclim_p = vclim
+  end where
+
+end subroutine climate_change
+
+!+++++++++++++++++++++++++++++++++++++++
+subroutine enso()
+!+++++++++++++++++++++++++++++++++++++++
+! Routine to do the El Nino / La Nina experiments (section 4.2 in Stassen et al 2018)
+  use mo_physics
+  use mo_numerics
+
+  implicit none
+
+  real, dimension(xdim,ydim,nstep_yr) :: Tclim_anom, uclim_anom, vclim_anom, & ! Dummies for the anomalies
+  &                                      omegaclim_anom, wsclim_anom
+
+  integer                       :: i
+
+  !Print
+  write(*,*) '                                  '
+  write(*,*) '                                  '
+  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
+  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
+  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
+  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
+  write(*,*) '                                  '
+  write(*,*) '               El Nino            '
+  write(*,*) '                                  '
+
+  ! Initially set anomalies to zero
+  Tclim_anom=0.; uclim_anom=0.; vclim_anom=0.; omegaclim_anom=0.; wsclim_anom=0.
+
+  !< If exp 230: El Nino -> Prescribe T_surf, uwnd, vwnd, omega anomalies
+  if ( log_exp == 230 ) THEN
+    ! Read in anomalies
+    open(24,file='../input/tsurf.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(25,file='../input/zonal.wind.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(26,file='../input/meridional.wind.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(27,file='../input/omega.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(28,file='../input/windspeed.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    do i=1,nstep_yr
+      read(24,rec=i) Tclim_anom(:,:,i)
+      read(25,rec=i) uclim_anom(:,:,i)
+      read(26,rec=i) vclim_anom(:,:,i)
+      read(27,rec=i) omegaclim_anom(:,:,i)
+      read(28,rec=i) wsclim_anom(:,:,i)
+    end do
+  end if !exp 230
+
+  !< If exp 231: El Nino -> Prescribe T_surf anomalies only
+  if ( log_exp == 231 ) THEN
+    ! Read in anomalies
+    open(24,file='../input/tsurf.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    do i=1,nstep_yr
+      read(24,rec=i) Tclim_anom(:,:,i)
+    end do
+  end if !exp 231
+
+  !< If exp 234: La Nina -> Prescribe T_surf, uwnd, vwnd, omega anomalies
+  if ( log_exp == 234 ) THEN
+    ! Read in anomalies
+    open(24,file='../input/tsurf.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(25,file='../input/zonal.wind.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(26,file='../input/meridional.wind.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(27,file='../input/omega.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(28,file='../input/windspeed.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    do i=1,nstep_yr
+      read(24,rec=i) Tclim_anom(:,:,i)
+      read(25,rec=i) uclim_anom(:,:,i)
+      read(26,rec=i) vclim_anom(:,:,i)
+      read(27,rec=i) omegaclim_anom(:,:,i)
+      read(28,rec=i) wsclim_anom(:,:,i)
+    end do
+  end if !exp 234
+
+  !< If exp 235: La Nina -> Prescribe T_surf anomalies only
+  if ( log_exp == 235 ) THEN
+    ! Read in anomalies
+    open(24,file='../input/tsurf.response.erainterim.elanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    do i=1,nstep_yr
+      read(24,rec=i) Tclim_anom(:,:,i)
+    end do
+  end if !exp 235
+
+  ! Add anomalies on top (some anomalies might be zero)
+  Tclim       = Tclim + Tclim_anom
+  uclim       = uclim + uclim_anom
+  vclim       = vclim + vclim_anom
+  omegaclim  = omegaclim + omegaclim_anom
+  wsclim = wsclim + wsclim_anom
+
+  ! Close files
+  close(24, status='keep'); close(25, status='keep'); close(26, status='keep')
+  close(27, status='keep'); close(28, status='keep')
+
+  where (uclim(:,:,:) >= 0.0)
+    uclim_m = uclim
+    uclim_p = 0.0
+  else where
+    uclim_m = 0.0
+    uclim_p = uclim
+  end where
+  where (vclim(:,:,:) >= 0.0)
+    vclim_m = vclim
+    vclim_p = 0.0
+  else where
+    vclim_m = 0.0
+    vclim_p = vclim
+  end where
+
+end subroutine enso
 
 !+++++++++++++++++++++++++++++++++++++++
 subroutine diagonstics(it, year, CO2, ts0, ta0, to0, q0, ice_cover, sw, lw_surf, q_lat, q_sens)
