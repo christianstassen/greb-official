@@ -21,9 +21,9 @@ for ifile in file_list:
         zdef   1 linear 1 1
         tdef  730 linear 1jan0  12hr
         vars 3
-        tsurf_corr  1 0 data 1
-        tocean_corr  1 0 data 1
-        q_corr  1 0 data 1
+        tsurf_corr  1 0 tsurf_corr
+        tocean_corr  1 0 tocean_corr
+        q_corr  1 0 q_corr
         endvars"""%(file))
         ctl.close()
 
@@ -42,15 +42,15 @@ for ifile in file_list:
         zdef   1 linear 1 1
         tdef  60 linear 15jan0  1mo
         vars 9
-        tsurf  1 0 data 1
-        tatm  1 0 data 1
-        tocean  1 0 data 1
-        q  1 0 data 1
-        albedo 1 0 data 1
-        precip 1 0 data 1
-        dqrain 1 0 data 1
-        dqeva 1 0 data 1
-        dqcrcl 1 0 data 1
+        tsurf  1 0 tsurf
+        tatm  1 0 tatm
+        tocean  1 0 tocean
+        q  1 0 q
+        albedo 1 0 albedo
+        precip 1 0 precip
+        dqrain 1 0 dqrain
+        dqeva 1 0 dqeva
+        dqcrcl 1 0 dqcrcl
         endvars"""%(file))
         ctl.close()
 
@@ -69,15 +69,15 @@ for ifile in file_list:
         zdef   1 linear 1 1
         tdef  60 linear 15jan0  1mo
         vars 9
-        tsurf  1 0 data 1
-        tatm  1 0 data 1
-        tocean  1 0 data 1
-        q  1 0 data 1
-        albedo 1 0 data 1
-        precip 1 0 data 1
-        dqrain 1 0 data 1
-        dqeva 1 0 data 1
-        dqcrcl 1 0 data 1
+        tsurf  1 0 tsurf
+        tatm  1 0 tatm
+        tocean  1 0 tocean
+        q  1 0 q
+        albedo 1 0 albedo
+        precip 1 0 precip
+        dqrain 1 0 dqrain
+        dqeva 1 0 dqeva
+        dqcrcl 1 0 dqcrcl
         endvars"""%(file))
         ctl.close()
 
