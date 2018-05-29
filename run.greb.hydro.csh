@@ -240,4 +240,9 @@ qcrcl 1 0 qcrcl
 endvars
 EOF
 
+echo ' '
+echo 'Convert output files to netcdf?'
+cd ../output
+sh ctl2nc.sh
+
 exit
