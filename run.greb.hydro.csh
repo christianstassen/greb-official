@@ -107,7 +107,7 @@ gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.she
 # END USER INPUT! #
 ###################
 
-setenv OMP_NUM_THREADS 2
+setenv OMP_NUM_THREADS 6
 setenv KMP_AFFINITY verbose,none
 
 # move complied files to work directory

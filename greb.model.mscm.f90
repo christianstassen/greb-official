@@ -495,27 +495,30 @@ subroutine tendencies(CO2, Ts1, Ta1, To1, q1, ice_cover, SW, LW_surf, Q_lat, Q_s
 &                               dq_eva, dq_rain, dTa_crcl, dq_crcl, LW_surf,   &
 &                               dT_ocean, dTo
 
+!$omp parallel sections
+!$omp section
     ! SW radiation model
     call SWradiation(Ts1, sw, ice_cover)
+!$omp section
     ! LW radiation model
     call LWradiation(Ts1, Ta1, q1, CO2, LW_surf, LWair_up, LWair_down, em)
     ! sensible heat flux
     Q_sens = ct_sens*(Ta1-Ts1)
-
+!$omp section
 ! decon mean state switch
     if (log_atmos_dmc == 0) Q_sens = 0.
 
     ! hydro. model
     call hydro(Ts1, q1, Q_lat, Q_lat_air, dq_eva, dq_rain)
     ! atmos. circulation
-!$omp parallel sections
 !$omp section
     call circulation(Ta1, dTa_crcl, z_air, wz_air)       ! air temp
 !$omp section
     call circulation( q1,  dq_crcl, z_vapor, wz_vapor)   ! atmos water vapor
-!$omp end parallel sections
+!$omp section
     ! deep ocean interaction
     call deep_ocean(Ts1, To1, dT_ocean, dTo)
+!$omp end parallel sections
 
 end subroutine tendencies
 
