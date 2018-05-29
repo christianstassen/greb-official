@@ -137,7 +137,7 @@ module mo_physics
 ! switches for the hydrological cycle
   integer  :: log_rain        = 0              ! process control precipitation parameterisation
   integer  :: log_eva         = 0              ! process control evaporation parameterisation
-  integer  :: log_adv         = 0              ! process control advection parameterisation
+  integer  :: log_conv         = 0              ! process control advection parameterisation
   integer  :: log_clim        = 0              ! process control for reference climatology
 
 ! parameters for scenarios
@@ -177,6 +177,7 @@ module mo_physics
   parameter( cq_rain   = -0.1/24./3600. )          ! decrease in air water vapor due to rain [1/s]
   parameter( z_air     = 8400. )                   ! scaling height atmos. heat, CO2
   parameter( z_vapor   = 5000. )                   ! scaling height atmos. water vapor diffusion
+  parameter( grav      = 9.81  )                   ! gravitational acceleration [m/s^2]
   real :: r_qviwv   = 2.6736e3                     ! regres. factor between viwv and q_air  [kg/m^3]
 
   ! physical paramter (rainfall)
@@ -224,7 +225,7 @@ module mo_physics
 &                      log_hydro_dmc, log_qflux_dmc, 					                          &
 &                      log_topo_drsp, log_cloud_drsp, log_humid_drsp, log_hydro_drsp,   &
 &                      log_ocean_drsp, log_ice, log_hdif, log_hadv, log_vdif, log_vadv, &
-& 		                 S0_var, dradius, log_rain, log_eva, log_adv, log_clim
+& 		                 S0_var, dradius, log_rain, log_eva, log_conv, log_clim
 
 end module mo_physics
 
@@ -239,9 +240,9 @@ module mo_diagnostics
 &                                        ftmn, fqmn, icmn, Tomn
 
 ! declare output fields
-  real, dimension(xdim,ydim)          :: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm
+  real, dimension(xdim,ydim)          :: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm, qcrclmm
   real, dimension(xdim,ydim,12)       :: Tmn_ctrl, Tamn_ctrl, Tomn_ctrl
-  real, dimension(xdim,ydim,12)       :: qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl
+  real, dimension(xdim,ydim,12)       :: qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl, qcrclmn_ctrl
 
 end module mo_diagnostics
 
@@ -474,7 +475,7 @@ subroutine time_loop(it, isrec, year, CO2, irec, mon, ionum, Ts1, Ta1, q1, To1, 
   ! sea ice heat capacity
   call seaice(Ts0)
   ! write output
-  call output(it, ionum, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, dq_eva)
+  call output(it, ionum, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, dq_eva, dq_crcl)
   ! diagnostics: annual means plots
   call diagonstics(it, year, CO2, ts0, ta0, to0, q0, ice_cover, sw, lw_surf, q_lat, q_sens)
 
@@ -818,14 +819,14 @@ subroutine circulation(X_in, dX_crcl, h_scl, wz)
 
   USE mo_numerics,  ONLY: xdim, ydim, dt, dt_crcl
   USE mo_physics,   ONLY: z_vapor, z_air, log_exp, log_atmos_dmc, &
-&                         log_vdif, log_vadv, log_hdif, log_hadv
+&                         log_vdif, log_vadv, log_hdif, log_hadv, log_conv
   implicit none
 
   real, dimension(xdim,ydim), intent(in)  :: X_in, wz
   real,                       intent(in)  :: h_scl
   real, dimension(xdim,ydim), intent(out) :: dX_crcl
 
-  real, dimension(xdim,ydim) :: X, dx_diffuse, dx_advec
+  real, dimension(xdim,ydim) :: X, dx_diffuse, dx_advec, dx_conv
   integer time, tt
 
   dX_crcl    = 0.0
@@ -835,6 +836,7 @@ subroutine circulation(X_in, dX_crcl, h_scl, wz)
 
   dx_diffuse = 0.0
   dx_advec   = 0.0
+  dx_conv    = 0.0
   time=max(1,nint(float(dt)/dt_crcl))
 
   X = X_in;
@@ -842,9 +844,10 @@ subroutine circulation(X_in, dX_crcl, h_scl, wz)
 ! dmc & decon2xco2 switch
      if (log_vdif == 1 .and. h_scl .eq. z_vapor) call diffusion(X, dx_diffuse, h_scl, wz)
      if (log_vadv == 1 .and. h_scl .eq. z_vapor) call advection(X, dx_advec, h_scl, wz)
+     if (log_conv == 0 .and. h_scl .eq. z_vapor) call convergence(X, dx_conv)
      if (log_hdif == 1 .and. h_scl .eq. z_air)   call diffusion(X, dx_diffuse, h_scl, wz)
      if (log_hadv == 1 .and. h_scl .eq. z_air)   call advection(X, dx_advec, h_scl, wz)
-     X = X + dx_diffuse + dx_advec
+     X = X + dx_diffuse + dx_advec + dx_conv
   end do           ! time loop
   dX_crcl = X - X_in
 
@@ -1213,6 +1216,32 @@ subroutine advection(T1, dX_advec,h_scl, wz)
 end subroutine advection
 
 !+++++++++++++++++++++++++++++++++++++++
+subroutine convergence(T1, div)
+!+++++++++++++++++++++++++++++++++++++++
+! Calculates divergence (convergence) of a given field (i.e. spec. hum.) when omega is known
+! Eq. 14 in Stassen & Dommenget 2018
+  use mo_numerics, only: xdim, ydim, nstep_yr, dlon, dlat, dt_crcl
+  use mo_physics,  only: ityr, rho_air, grav, pi, z_vapor, omegaclim
+  implicit none
+
+  real, dimension(xdim,ydim), intent(in)  :: T1
+  real, dimension(xdim,ydim), intent(out) :: div
+
+  real    :: w
+  integer :: i, j
+
+  do j=1,ydim
+    do i=1,xdim
+      !< Vertical velocity omega (Pa/s) to m/s
+      w = -omegaclim(i,j,ityr) / (rho_air*grav)
+      !< Convergence
+      div(i,j) = T1(i,j) * w * dt_crcl / z_vapor * 2.5
+    end do
+  end do
+
+end subroutine convergence
+
+!+++++++++++++++++++++++++++++++++++++++
 subroutine forcing(it, year, CO2, Tsurf)
 !+++++++++++++++++++++++++++++++++++++++
 
@@ -1352,22 +1381,22 @@ subroutine diagonstics(it, year, CO2, ts0, ta0, to0, q0, ice_cover, sw, lw_surf,
 end subroutine diagonstics
 
 !+++++++++++++++++++++++++++++++++++++++
-subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, dq_eva)
+subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, dq_eva, dq_crcl)
 !+++++++++++++++++++++++++++++++++++++++
 !    write output
 
   USE mo_numerics,     ONLY: xdim, ydim, jday_mon, ndt_days, nstep_yr, time_scnr &
 &                          , time_ctrl, ireal
   USE mo_physics,      ONLY: jday, log_exp
-  use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm &
-&                          , Tmn_ctrl, Tamn_ctrl, Tomn_ctrl, qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl
+  use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm, qcrclmm &
+&                          , Tmn_ctrl, Tamn_ctrl, Tomn_ctrl, qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl, qcrclmn_ctrl
 
   ! declare temporary fields
-  real, dimension(xdim,ydim)  :: Ts0, Ta0, To0, q0, ice_cover, dq_rain, dq_eva
+  real, dimension(xdim,ydim)  :: Ts0, Ta0, To0, q0, ice_cover, dq_rain, dq_eva, dq_crcl
 
   ! diagnostics: monthly means
   Tmm=Tmm+Ts0; Tamm=Tamm+ta0; Tomm=Tomm+to0; qmm=qmm+q0; icmm=icmm+ice_cover;
-  prmm=prmm+dq_rain; evamm=evamm+dq_eva;
+  prmm=prmm+dq_rain; evamm=evamm+dq_eva; qcrclmm=qcrclmm+dq_crcl;
 
 ! control output
   if (       jday == sum(jday_mon(1:mon))                   &
@@ -1377,24 +1406,26 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
      if (it/float(ndt_days)  > 365*(time_ctrl-1)) then
      if (log_exp .eq. 1 ) then
      irec=irec+1;
-     write(iunit,rec=7*irec-6)  Tmm/ndm
-     write(iunit,rec=7*irec-5)  Tamm/ndm
-     write(iunit,rec=7*irec-4)  Tomm/ndm
-     write(iunit,rec=7*irec-3)   qmm/ndm
-     write(iunit,rec=7*irec-2)  icmm/ndm
-     write(iunit,rec=7*irec-1)  prmm/ndm
-     write(iunit,rec=7*irec)   evamm/ndm
+     write(iunit,rec=8*irec-7)  Tmm/ndm
+     write(iunit,rec=8*irec-6)  Tamm/ndm
+     write(iunit,rec=8*irec-5)  Tomm/ndm
+     write(iunit,rec=8*irec-4)   qmm/ndm
+     write(iunit,rec=8*irec-3)  icmm/ndm
+     write(iunit,rec=8*irec-2)  prmm/ndm
+     write(iunit,rec=8*irec-1) evamm/ndm
+     write(iunit,rec=8*irec) qcrclmm/ndm
      else
-     Tmn_ctrl(:,:,mon)   =   Tmm/ndm
-     Tamn_ctrl(:,:,mon)  =  Tamm/ndm
-     Tomn_ctrl(:,:,mon)  =  Tomm/ndm
-     qmn_ctrl(:,:,mon)   =   qmm/ndm
-     icmn_ctrl(:,:,mon)  =  icmm/ndm
-     prmn_ctrl(:,:,mon)  =  prmm/ndm
-     evamn_ctrl(:,:,mon) = evamm/ndm
+     Tmn_ctrl(:,:,mon)     =   Tmm/ndm
+     Tamn_ctrl(:,:,mon)    =  Tamm/ndm
+     Tomn_ctrl(:,:,mon)    =  Tomm/ndm
+     qmn_ctrl(:,:,mon)     =   qmm/ndm
+     icmn_ctrl(:,:,mon)    =  icmm/ndm
+     prmn_ctrl(:,:,mon)    =  prmm/ndm
+     evamn_ctrl(:,:,mon)   = evamm/ndm
+     qcrclmn_ctrl(:,:,mon) = qcrclmm/ndm
      end if
      end if
-     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.;
+     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
      mon=mon+1; if (mon==13) mon=1
   end if
 
@@ -1405,22 +1436,24 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
      ndm=jday_mon(mon)*ndt_days
      irec=irec+1;
      if (log_exp .ge. 35 .and. log_exp .le. 37 ) then
-     write(iunit,rec=7*irec-6)   Tmm/ndm
-     write(iunit,rec=7*irec-5)  Tamm/ndm
-     write(iunit,rec=7*irec-4)  Tomm/ndm
-     write(iunit,rec=7*irec-3)   qmm/ndm
-     write(iunit,rec=7*irec-2)  icmm/ndm
-     write(iunit,rec=7*irec-1)  prmm/ndm
-     write(iunit,rec=7*irec)   evamm/ndm
+     write(iunit,rec=8*irec-7)   Tmm/ndm
+     write(iunit,rec=8*irec-6)  Tamm/ndm
+     write(iunit,rec=8*irec-5)  Tomm/ndm
+     write(iunit,rec=8*irec-4)   qmm/ndm
+     write(iunit,rec=8*irec-3)  icmm/ndm
+     write(iunit,rec=8*irec-2)  prmm/ndm
+     write(iunit,rec=8*irec-1) evamm/ndm
+     write(iunit,rec=8*irec) qcrclmm/ndm
 
      else
-     write(iunit,rec=7*irec-6)   Tmm/ndm  -Tmn_ctrl(:,:,mon)
-     write(iunit,rec=7*irec-5)  Tamm/ndm -Tamn_ctrl(:,:,mon)
-     write(iunit,rec=7*irec-4)  Tomm/ndm -Tomn_ctrl(:,:,mon)
-     write(iunit,rec=7*irec-3)   qmm/ndm -qmn_ctrl(:,:,mon)
-     write(iunit,rec=7*irec-2)  icmm/ndm -icmn_ctrl(:,:,mon)
-     write(iunit,rec=7*irec-1)  prmm/ndm -prmn_ctrl(:,:,mon)
-     write(iunit,rec=7*irec)   evamm/ndm -evamn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-7)   Tmm/ndm  -Tmn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-6)  Tamm/ndm -Tamn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-5)  Tomm/ndm -Tomn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-4)   qmm/ndm -qmn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-3)  icmm/ndm -icmn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-2)  prmm/ndm -prmn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec-1) evamm/ndm -evamn_ctrl(:,:,mon)
+     write(iunit,rec=8*irec) qcrclmm/ndm -qcrclmn_ctrl(:,:,mon)
 
      iyrec=floor(float((irec-1)/12))
      write(103,rec=               12*iyrec+mon) gmean(Tmm/ndm  -Tmn_ctrl(:,:,mon))
@@ -1430,8 +1463,9 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
      write(103,rec=4*12*time_scnr+12*iyrec+mon) gmean(icmm/ndm -icmn_ctrl(:,:,mon))
      write(103,rec=5*12*time_scnr+12*iyrec+mon) gmean(prmm/ndm -prmn_ctrl(:,:,mon))
      write(103,rec=6*12*time_scnr+12*iyrec+mon) gmean(evamm/ndm -evamn_ctrl(:,:,mon))
+     write(103,rec=7*12*time_scnr+12*iyrec+mon) gmean(qcrclmm/ndm -qcrclmn_ctrl(:,:,mon))
      end if
-     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.;
+     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
      mon=mon+1; if (mon==13) mon=1
   end if
 
