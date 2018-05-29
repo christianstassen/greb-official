@@ -209,13 +209,14 @@ xdef  96 linear 0 3.75
 ydef  48 linear -88.125 3.75
 zdef   1 linear 1 1
 tdef $MONTHS linear 15jan0  1mo
-vars 6
+vars 7
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
 vapor  1 0 vapour
 ice    1 0 ice
 precip 1 0 precip
+eva 1 0 eva
 endvars
 EOF
 
@@ -226,13 +227,14 @@ xdef 12 linear 0 3.75
 ydef  1 linear -88.125 3.75
 zdef  $YEARS linear 1 1
 tdef  1 linear 15jan0  1mo
-vars 6
+vars 7
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
 vapor  1 0 vapour
 ice    1 0 ice
 precip 1 0 precip
+eva 1 0 eva
 endvars
 EOF
 
