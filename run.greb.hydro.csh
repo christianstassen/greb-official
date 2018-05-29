@@ -74,7 +74,7 @@ if (-d work ) rm -f work/*
 
 # settings for scenario
 # scenario number from list above
-set EXP=240
+set EXP=230
 # length of sensitivity experiment in years
 set YEARS=5
 
@@ -96,7 +96,7 @@ set CO2input=none
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
 # gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
-gfortran -Ofast greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### ifortran compiler (Mac)
 # ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### g95 compiler (other Linux)
@@ -190,7 +190,9 @@ if ( $EXP == 97 ) set FILENAME=exp-${EXP}.IPCC.RCP45
 if ( $EXP == 98 ) set FILENAME=exp-${EXP}.IPCC.RCP60
 if ( $EXP == 99 ) set FILENAME=exp-${EXP}.IPCC.RCP85
 if ( $EXP == 100 ) set FILENAME=exp-${EXP}.${CO2input}
-if ( $EXP == 240 ) set FILENAME=exp-${EXP}.forcedClimateChange.RCP85
+if ( $EXP == 230 ) set FILENAME=exp-${EXP}.forced.climatechange.ensemblemean
+if ( $EXP == 240 ) set FILENAME=exp-${EXP}.forced.elnino.erainterim
+if ( $EXP == 241 ) set FILENAME=exp-${EXP}.forced.lanina.erainterim
 
 # rename scenario run output and move it to output folder
 mv scenario.bin ../output/scenario.${FILENAME}.bin

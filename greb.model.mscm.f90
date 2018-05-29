@@ -195,6 +195,18 @@ module mo_physics
   real, dimension(xdim,ydim)          ::  co2_part      = 1.0
   real, dimension(xdim,ydim)          ::  co2_part_scn  = 1.0
 
+! declare anomaly fields for enso and climate change
+  real, dimension(xdim,ydim,nstep_yr) ::   Tclim_anom_enso     = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   uclim_anom_enso     = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   vclim_anom_enso     = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   omegaclim_anom_enso = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   wsclim_anom_enso    = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   Tclim_anom_cc       = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   uclim_anom_cc       = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   vclim_anom_cc       = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   omegaclim_anom_cc   = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   wsclim_anom_cc      = 0.
+
 ! declare constant fields
   real, dimension(xdim,ydim)          ::  cap_surf
   integer jday, ityr
@@ -368,7 +380,7 @@ subroutine greb_model
   Ts1 = Ts_ini; Ta1 = Ta_ini; To1 = To_ini; q1 = q_ini;                   ! initialize fields
   year=1970; mon=1; irec=0; Tmm=0.; Tamm=0.; qmm=0.; apmm=0.;
   do it=1, time_ctrl*nstep_yr                                             ! main time loop
-     call time_loop(it, isrec, year, CO2_ctrl, irec, mon, 41, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
+    call time_loop(it, isrec, year, CO2_ctrl, irec, mon, 41, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
     Ts1=Ts0; Ta1=Ta0; q1=q0; To1=To0
     if (log_exp .eq. 1 .and. mod(it,nstep_yr) .eq. 0) year=year+1
   end do
@@ -386,10 +398,21 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      print*,'Solar radius [AU] = ', radius
      rS0 = (1/radius)**2
      sw_solar = rS0*sw_solar
-   end if
-
-  if ( log_exp .ge. 230 .and. log_exp .le. 239 ) call enso()
-  if ( log_exp .eq. 240 .and. log_exp .le. 249 ) call climate_change()
+  end if
+  if ( log_exp .eq. 230 ) then ! change boundary conditions for ENSO forcing
+     Tclim      = Tclim + Tclim_anom_cc
+     uclim      = uclim + uclim_anom_cc
+     vclim      = vclim + vclim_anom_cc
+     omegaclim  = omegaclim + omegaclim_anom_cc
+     wsclim     = wsclim + wsclim_anom_cc
+  end if
+  if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then ! change boundary conditions for ENSO forcing
+     Tclim      = Tclim + Tclim_anom_enso
+     uclim      = uclim + uclim_anom_enso
+     vclim      = vclim + vclim_anom_enso
+     omegaclim  = omegaclim + omegaclim_anom_enso
+     wsclim     = wsclim + wsclim_anom_enso
+  end if
 
   print*,'% SCENARIO EXP: ',log_exp,'  time=', time_scnr,'yr'
   print 1001, "YEAR", "CO2[ppm]", "SW[W/m^2]", "global mean[C]", "Trop Pac[C]", "Hamburg[C]", "North Pole[C]" !TB
@@ -1255,198 +1278,14 @@ subroutine forcing(it, year, CO2, Tsurf)
       if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
   end if
 
-! Forced ENSO run
-  if( log_exp .ge. 230 .and. log_exp .le. 239 ) Tsurf = Tclim(:,:,ityr)
 ! Forced Climate Change run
-  if( log_exp .ge. 240 .and. log_exp .le. 249 ) Tsurf = Tclim(:,:,ityr)
+  if( log_exp .eq. 230 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
+
+! Forced ENSO run
+  if( log_exp .eq. 240 .or. log_exp .eq. 241 ) Tsurf = Tclim(:,:,ityr)  ! Keep temp on external boundary condition
 
 
 end subroutine forcing
-
-!+++++++++++++++++++++++++++++++++++++++
-subroutine climate_change()
-!+++++++++++++++++++++++++++++++++++++++
-! Routine to do climate change experiments (section 4.3 in Stassen et al 2018)
-  use mo_physics
-  use mo_numerics
-
-  implicit none
-  real, dimension(xdim,ydim,nstep_yr) :: Tclim_anom, uclim_anom, vclim_anom, & ! Dummies for the anomalies
-  &                                      omegaclim_anom, wsclim_anom
-
-  integer :: i
-
-  !Print
-  write(*,*) '                              '
-  write(*,*) '       \  \  \   /\           '
-  write(*,*) '        \  \  \ /  \          '
-  write(*,*) '         \  \  /    \         '
-  write(*,*) '          \  \/      \        '
-  write(*,*) '           \  |       |       '
-  write(*,*) '            \ |  ~ ~  |       '
-  write(*,*) '             \|  ~ ~  |       '
-  write(*,*) '                              '
-  write(*,*) '            Climate Change    '
-  write(*,*) '                              '
-
-
-  ! Initially set anomalies to zero
-  Tclim_anom=0.; uclim_anom=0.; vclim_anom=0.; omegaclim_anom=0.; wsclim_anom=0.
-
-  !< If exp 240: CC -> Prescribe Tsurf, uwind, vwind, omega
-  if ( log_exp == 240 ) then
-
-    ! Read in anomalies
-    open(31,file='../input/tsurf.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(32,file='../input/zonal.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(33,file='../input/meridional.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(34,file='../input/omega.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(35,file='../input/windspeed.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    do i=1,nstep_yr
-      read(31,rec=i) Tclim_anom(:,:,i)
-      read(32,rec=i) uclim_anom(:,:,i)
-      read(33,rec=i) vclim_anom(:,:,i)
-      read(34,rec=i) omegaclim_anom(:,:,i)
-      read(35,rec=i) wsclim_anom(:,:,i)
-    end do
-
-    ! Add anomalies on top
-    Tclim       = Tclim + Tclim_anom
-    uclim       = uclim + uclim_anom
-    vclim       = vclim + vclim_anom
-    omegaclim  = omegaclim + omegaclim_anom
-    wsclim = wsclim + wsclim_anom
-
-    ! Close files
-    close(31, status='keep'); close(32, status='keep'); close(33, status='keep')
-    close(34, status='keep'); close(35, status='keep')
-
-  end if !exp 240
-
-  where (uclim(:,:,:) >= 0.0)
-    uclim_m = uclim
-    uclim_p = 0.0
-  else where
-    uclim_m = 0.0
-    uclim_p = uclim
-  end where
-  where (vclim(:,:,:) >= 0.0)
-    vclim_m = vclim
-    vclim_p = 0.0
-  else where
-    vclim_m = 0.0
-    vclim_p = vclim
-  end where
-
-end subroutine climate_change
-
-!+++++++++++++++++++++++++++++++++++++++
-subroutine enso()
-!+++++++++++++++++++++++++++++++++++++++
-! Routine to do the El Nino / La Nina experiments (section 4.2 in Stassen et al 2018)
-  use mo_physics
-  use mo_numerics
-
-  implicit none
-
-  real, dimension(xdim,ydim,nstep_yr) :: Tclim_anom, uclim_anom, vclim_anom, & ! Dummies for the anomalies
-  &                                      omegaclim_anom, wsclim_anom
-
-  integer                       :: i
-
-  !Print
-  write(*,*) '                                  '
-  write(*,*) '                                  '
-  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
-  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
-  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
-  write(*,*) '               ~~~~~~~~~~~~~~~~~  '
-  write(*,*) '                                  '
-  write(*,*) '               El Nino            '
-  write(*,*) '                                  '
-
-  ! Initially set anomalies to zero
-  Tclim_anom=0.; uclim_anom=0.; vclim_anom=0.; omegaclim_anom=0.; wsclim_anom=0.
-
-  !< If exp 230: El Nino -> Prescribe T_surf, uwnd, vwnd, omega anomalies
-  if ( log_exp == 230 ) THEN
-    ! Read in anomalies
-    open(24,file='../input/tsurf.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(25,file='../input/zonal.wind.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(26,file='../input/meridional.wind.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(27,file='../input/omega.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(28,file='../input/windspeed.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    do i=1,nstep_yr
-      read(24,rec=i) Tclim_anom(:,:,i)
-      read(25,rec=i) uclim_anom(:,:,i)
-      read(26,rec=i) vclim_anom(:,:,i)
-      read(27,rec=i) omegaclim_anom(:,:,i)
-      read(28,rec=i) wsclim_anom(:,:,i)
-    end do
-  end if !exp 230
-
-  !< If exp 231: El Nino -> Prescribe T_surf anomalies only
-  if ( log_exp == 231 ) THEN
-    ! Read in anomalies
-    open(24,file='../input/tsurf.response.erainterim.elnino', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    do i=1,nstep_yr
-      read(24,rec=i) Tclim_anom(:,:,i)
-    end do
-  end if !exp 231
-
-  !< If exp 234: La Nina -> Prescribe T_surf, uwnd, vwnd, omega anomalies
-  if ( log_exp == 234 ) THEN
-    ! Read in anomalies
-    open(24,file='../input/tsurf.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(25,file='../input/zonal.wind.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(26,file='../input/meridional.wind.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(27,file='../input/omega.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    open(28,file='../input/windspeed.response.erainterim.lanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    do i=1,nstep_yr
-      read(24,rec=i) Tclim_anom(:,:,i)
-      read(25,rec=i) uclim_anom(:,:,i)
-      read(26,rec=i) vclim_anom(:,:,i)
-      read(27,rec=i) omegaclim_anom(:,:,i)
-      read(28,rec=i) wsclim_anom(:,:,i)
-    end do
-  end if !exp 234
-
-  !< If exp 235: La Nina -> Prescribe T_surf anomalies only
-  if ( log_exp == 235 ) THEN
-    ! Read in anomalies
-    open(24,file='../input/tsurf.response.erainterim.elanina', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-    do i=1,nstep_yr
-      read(24,rec=i) Tclim_anom(:,:,i)
-    end do
-  end if !exp 235
-
-  ! Add anomalies on top (some anomalies might be zero)
-  Tclim       = Tclim + Tclim_anom
-  uclim       = uclim + uclim_anom
-  vclim       = vclim + vclim_anom
-  omegaclim  = omegaclim + omegaclim_anom
-  wsclim = wsclim + wsclim_anom
-
-  ! Close files
-  close(24, status='keep'); close(25, status='keep'); close(26, status='keep')
-  close(27, status='keep'); close(28, status='keep')
-
-  where (uclim(:,:,:) >= 0.0)
-    uclim_m = uclim
-    uclim_p = 0.0
-  else where
-    uclim_m = 0.0
-    uclim_p = uclim
-  end where
-  where (vclim(:,:,:) >= 0.0)
-    vclim_m = vclim
-    vclim_p = 0.0
-  else where
-    vclim_m = 0.0
-    vclim_p = vclim
-  end where
-
-end subroutine enso
 
 !+++++++++++++++++++++++++++++++++++++++
 subroutine diagonstics(it, year, CO2, ts0, ta0, to0, q0, ice_cover, sw, lw_surf, q_lat, q_sens)

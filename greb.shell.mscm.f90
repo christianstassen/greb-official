@@ -67,6 +67,49 @@ if ( log_exp .ge. 96 .and. log_exp .le. 100 ) then
 open(26,file='co2forcing')
 end if
 
+! open external forcing for climate change (ensemble mean) (it is read in forcing subroutine)
+if ( log_exp .eq. 230 ) then
+  open(31,file='../input/tsurf.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(32,file='../input/zonal.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(33,file='../input/meridional.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(34,file='../input/omega.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(35,file='../input/windspeed.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  do i=1,nstep_yr ! Read in the anomalies
+    read(31,rec=i) Tclim_anom_cc(:,:,i)
+    read(32,rec=i) uclim_anom_cc(:,:,i)
+    read(33,rec=i) vclim_anom_cc(:,:,i)
+    read(34,rec=i) omegaclim_anom_cc(:,:,i)
+    read(35,rec=i) wsclim_anom_cc(:,:,i)
+  end do
+end if
+
+! ENSO forcing
+if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then
+  ! open external forcing for El Nino (era-interim composite mean) (it is read in forcing subroutine)
+  if ( log_exp .eq. 240 ) then
+    open(41,file='../input/erainterim.tsurf.elnino.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(42,file='../input/erainterim.zonal.wind.elnino.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(43,file='../input/erainterim.meridional.wind.elnino.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(44,file='../input/erainterim.omega.elnino.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(45,file='../input/erainterim.windspeed.elnino.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  ! open external forcing for La Nina (era-interim composite mean) (it is read in forcing subroutine)
+  else if ( log_exp .eq. 241 ) then
+    open(41,file='../input/erainterim.tsurf.lanina.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(42,file='../input/erainterim.zonal.wind.lanina.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(43,file='../input/erainterim.meridional.wind.lanina.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(44,file='../input/erainterim.omega.lanina.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+    open(45,file='../input/erainterim.windspeed.lanina.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  end if
+  do i=1,nstep_yr ! Read in the anomalies
+    read(41,rec=i) Tclim_anom_enso(:,:,i)
+    read(42,rec=i) uclim_anom_enso(:,:,i)
+    read(43,rec=i) vclim_anom_enso(:,:,i)
+    read(44,rec=i) omegaclim_anom_enso(:,:,i)
+    read(45,rec=i) wsclim_anom_enso(:,:,i)
+  end do
+end if ! ENSO forcing
+
+
 ! start greb_model run
 print*,'% time flux/control/scenario: ', time_flux, time_ctrl, time_scnr
 call greb_model
