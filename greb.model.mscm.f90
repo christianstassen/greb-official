@@ -239,9 +239,9 @@ module mo_diagnostics
 &                                        ftmn, fqmn, icmn, Tomn
 
 ! declare output fields
-  real, dimension(xdim,ydim)          :: Tmm, Tamm, Tomm, qmm, icmm
+  real, dimension(xdim,ydim)          :: Tmm, Tamm, Tomm, qmm, icmm, prmm
   real, dimension(xdim,ydim,12)       :: Tmn_ctrl, Tamn_ctrl, Tomn_ctrl
-  real, dimension(xdim,ydim,12)       :: qmn_ctrl, icmn_ctrl
+  real, dimension(xdim,ydim,12)       :: qmn_ctrl, icmn_ctrl, prmn_ctrl
 
 end module mo_diagnostics
 
@@ -259,9 +259,9 @@ subroutine greb_model
 &                               ts_ini, ta_ini, q_ini, to_ini
 
 ! open output files
-  open(41,file='control.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(42,file='scenario.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(43,file='scenario.gmean.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal)
+  open(101,file='control.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(102,file='scenario.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(103,file='scenario.gmean.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal)
 
   dTrad = -0.16*Tclim -5. ! offset Tatmos-rad
 
@@ -332,8 +332,8 @@ subroutine greb_model
     case(3) ! Adding rq and omega
       c_q=-0.2685845; c_rq=1.4591853; c_omega=-26.9858807; c_omegastd=0.
     case(0) ! Best GREB
-      c_q=-1.88; c_rq=2.25; c_omega=-17.69; c_omegastd=59.07 ! Rainfall parameters (ERA-Interim)
-      if (log_clim == 0) then
+        c_q=-1.88; c_rq=2.25; c_omega=-17.69; c_omegastd=59.07 ! Rainfall parameters (ERA-Interim)
+      if (log_clim == 1) then
         c_q=-1.27; c_rq=1.99; c_omega=-16.54; c_omegastd=21.15 ! Rainfall parameters (NCEP)
       end if
   end select
@@ -360,13 +360,13 @@ subroutine greb_model
 !       end do
 !       stop
        ! read Q-flux corrections
-       open(31,file='../input/Tsurf_flux_correction.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-       open(32,file='../input/vapour_flux_correction.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-       open(33,file='../input/Tocean_flux_correction.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+       open(104,file='../input/Tsurf_flux_correction.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+       open(105,file='../input/vapour_flux_correction.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+       open(106,file='../input/Tocean_flux_correction.bin',ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
        do irec=1, nstep_yr
-          read(31,rec=irec)  TF_correct(:,:,irec)
-          read(32,rec=irec)  qF_correct(:,:,irec)
-          read(33,rec=irec)  ToF_correct(:,:,irec)
+          read(104,rec=irec)  TF_correct(:,:,irec)
+          read(105,rec=irec)  qF_correct(:,:,irec)
+          read(106,rec=irec)  ToF_correct(:,:,irec)
        end do
   else ! => if (log_exp .eq. 1 .and. log_qflux_dmc .eq. 0) then
     TF_correct=0.
@@ -380,7 +380,7 @@ subroutine greb_model
   Ts1 = Ts_ini; Ta1 = Ta_ini; To1 = To_ini; q1 = q_ini;                   ! initialize fields
   year=1970; mon=1; irec=0; Tmm=0.; Tamm=0.; qmm=0.; apmm=0.;
   do it=1, time_ctrl*nstep_yr                                             ! main time loop
-    call time_loop(it, isrec, year, CO2_ctrl, irec, mon, 41, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
+    call time_loop(it, isrec, year, CO2_ctrl, irec, mon, 101, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
     Ts1=Ts0; Ta1=Ta0; q1=q0; To1=To0
     if (log_exp .eq. 1 .and. mod(it,nstep_yr) .eq. 0) year=year+1
   end do
@@ -422,7 +422,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
 
   do it=1, time_scnr*nstep_yr                                              ! main time loop
      call forcing(it, year, CO2, Ts1)
-     call time_loop(it,isrec, year, CO2, irec, mon, 42, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
+     call time_loop(it,isrec, year, CO2, irec, mon, 102, Ts1, Ta1, q1, To1, Ts0,Ta0, q0, To0 )
 
      Ts1=Ts0; Ta1=Ta0; q1=q0; To1=To0
      if (mod(it,nstep_yr) == 0) year=year+1
@@ -474,7 +474,7 @@ subroutine time_loop(it, isrec, year, CO2, irec, mon, ionum, Ts1, Ta1, q1, To1, 
   ! sea ice heat capacity
   call seaice(Ts0)
   ! write output
-  call output(it, ionum, irec, mon, ts0, ta0, to0, q0, ice_cover)
+  call output(it, ionum, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain)
   ! diagnostics: annual means plots
   call diagonstics(it, year, CO2, ts0, ta0, to0, q0, ice_cover, sw, lw_surf, q_lat, q_sens)
 
@@ -673,11 +673,13 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
   USE mo_numerics,    ONLY: xdim, ydim
   USE mo_physics,     ONLY: rho_air, uclim, vclim, z_topo, swetclim, ityr,   &
 &                           ce, cq_latent, cq_rain, z_air, r_qviwv, log_exp, &
-&                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp
+&                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp,    &
+&                           omegaclim, omegastdclim,  wz_vapor,              &
+&                           c_q, c_rq, c_omega, c_omegastd                   ! Rainfall parameters
 
 ! declare temporary fields
   real, dimension(xdim,ydim)  :: Tsurf, q, Qlat, Qlat_air, qs, dq_eva,        &
-&                                dq_rain, abswind
+&                                dq_rain, abswind, rq
 
   Qlat=0.; Qlat_air=0.; dq_eva=0.; dq_rain=0.
 
@@ -694,12 +696,19 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 ! saturated humiditiy (max. air water vapor)
   qs = 3.75e-3*exp(17.08085*(Tsurf-273.15)/(Tsurf-273.15+234.175));
   qs = qs*exp(-z_topo/z_air) ! scale qs by topography
+
+! relative humidity
+  rq = q/qs
+
 ! latent heat flux surface
   Qlat    = (q-qs)*abswind*cq_latent*rho_air*ce*swetclim(:,:,ityr)
 
 ! change in water vapor
   dq_eva  = -Qlat/cq_latent/r_qviwv  ! evaporation
-  dq_rain = cq_rain*q                ! rain
+  ! Eq. 8 (a-e) in Stassen & Dommenget 2018
+  ! Parameters in unused terms are set to zero
+  dq_rain = (c_q + c_rq*rq + c_omega*omegaclim(:,:,ityr) + c_omegastd*omegastdclim(:,:,ityr))*cq_rain*q
+  where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
 
 ! latent heat flux atmos
   Qlat_air = -dq_rain*cq_latent*r_qviwv
@@ -1318,75 +1327,80 @@ subroutine diagonstics(it, year, CO2, ts0, ta0, to0, q0, ice_cover, sw, lw_surf,
 end subroutine diagonstics
 
 !+++++++++++++++++++++++++++++++++++++++
-subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover)
+subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain)
 !+++++++++++++++++++++++++++++++++++++++
 !    write output
 
   USE mo_numerics,     ONLY: xdim, ydim, jday_mon, ndt_days, nstep_yr, time_scnr &
 &                          , time_ctrl, ireal
   USE mo_physics,      ONLY: jday, log_exp
-  use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, icmm, Tmn_ctrl &
-&                          , Tamn_ctrl, Tomn_ctrl, qmn_ctrl, icmn_ctrl
+  use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, icmm, prmm &
+&                          , Tmn_ctrl, Tamn_ctrl, Tomn_ctrl, qmn_ctrl, icmn_ctrl, prmn_ctrl
 
   ! declare temporary fields
-  real, dimension(xdim,ydim)  :: Ts0, Ta0, To0, q0, ice_cover
+  real, dimension(xdim,ydim)  :: Ts0, Ta0, To0, q0, ice_cover, dq_rain
 
   ! diagnostics: monthly means
-  Tmm=Tmm+Ts0; Tamm=Tamm+ta0; Tomm=Tomm+to0; qmm=qmm+q0; icmm=icmm+ice_cover
+  Tmm=Tmm+Ts0; Tamm=Tamm+ta0; Tomm=Tomm+to0; qmm=qmm+q0; icmm=icmm+ice_cover; prmm=prmm+dq_rain
 
 ! control output
   if (       jday == sum(jday_mon(1:mon))                   &
 &      .and. it/float(ndt_days) == nint(it/float(ndt_days)) &
-&      .and. iunit == 41 ) then
+&      .and. iunit == 101 ) then
      ndm=jday_mon(mon)*ndt_days
      if (it/float(ndt_days)  > 365*(time_ctrl-1)) then
      if (log_exp .eq. 1 ) then
      irec=irec+1;
-     write(iunit,rec=5*irec-4)  Tmm/ndm
-     write(iunit,rec=5*irec-3)  Tamm/ndm
-     write(iunit,rec=5*irec-2)  Tomm/ndm
-     write(iunit,rec=5*irec-1)   qmm/ndm
-     write(iunit,rec=5*irec)    icmm/ndm
+     write(iunit,rec=6*irec-5)  Tmm/ndm
+     write(iunit,rec=6*irec-4)  Tamm/ndm
+     write(iunit,rec=6*irec-3)  Tomm/ndm
+     write(iunit,rec=6*irec-2)   qmm/ndm
+     write(iunit,rec=6*irec-1)  icmm/ndm
+     write(iunit,rec=6*irec)    prmm/ndm
      else
      Tmn_ctrl(:,:,mon) =  Tmm/ndm
      Tamn_ctrl(:,:,mon) = Tamm/ndm
      Tomn_ctrl(:,:,mon) = Tomm/ndm
      qmn_ctrl(:,:,mon) =  qmm/ndm
      icmn_ctrl(:,:,mon) = icmm/ndm
+     prmn_ctrl(:,:,mon) = prmm/ndm
      end if
      end if
-     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.;
+     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.;
      mon=mon+1; if (mon==13) mon=1
   end if
 
 ! scenario output
   if (       jday == sum(jday_mon(1:mon))                   &
 &      .and. it/float(ndt_days) == nint(it/float(ndt_days)) &
-&      .and. iunit == 42 ) then
+&      .and. iunit == 102 ) then
      ndm=jday_mon(mon)*ndt_days
      irec=irec+1;
      if (log_exp .ge. 35 .and. log_exp .le. 37 ) then
-     write(iunit,rec=5*irec-4)  Tmm/ndm
-     write(iunit,rec=5*irec-3)  Tamm/ndm
-     write(iunit,rec=5*irec-2)  Tomm/ndm
-     write(iunit,rec=5*irec-1)   qmm/ndm
-     write(iunit,rec=5*irec)    icmm/ndm
+     write(iunit,rec=6*irec-5)   Tmm/ndm
+     write(iunit,rec=6*irec-4)  Tamm/ndm
+     write(iunit,rec=6*irec-3)  Tomm/ndm
+     write(iunit,rec=6*irec-2)   qmm/ndm
+     write(iunit,rec=6*irec-1)  icmm/ndm
+     write(iunit,rec=6*irec-1)  prmm/ndm
 
      else
-     write(iunit,rec=5*irec-4)  Tmm/ndm  -Tmn_ctrl(:,:,mon)
-     write(iunit,rec=5*irec-3)  Tamm/ndm -Tamn_ctrl(:,:,mon)
-     write(iunit,rec=5*irec-2)  Tomm/ndm -Tomn_ctrl(:,:,mon)
-     write(iunit,rec=5*irec-1)   qmm/ndm -qmn_ctrl(:,:,mon)
-     write(iunit,rec=5*irec)    icmm/ndm -icmn_ctrl(:,:,mon)
+     write(iunit,rec=6*irec-5)   Tmm/ndm  -Tmn_ctrl(:,:,mon)
+     write(iunit,rec=6*irec-4)  Tamm/ndm -Tamn_ctrl(:,:,mon)
+     write(iunit,rec=6*irec-3)  Tomm/ndm -Tomn_ctrl(:,:,mon)
+     write(iunit,rec=6*irec-2)   qmm/ndm -qmn_ctrl(:,:,mon)
+     write(iunit,rec=6*irec-1)  icmm/ndm -icmn_ctrl(:,:,mon)
+     write(iunit,rec=6*irec)    prmm/ndm -prmn_ctrl(:,:,mon)
 
      iyrec=floor(float((irec-1)/12))
-     write(43,rec=               12*iyrec+mon) gmean(Tmm/ndm  -Tmn_ctrl(:,:,mon))
-     write(43,rec=1*12*time_scnr+12*iyrec+mon) gmean(Tamm/ndm -Tamn_ctrl(:,:,mon))
-     write(43,rec=2*12*time_scnr+12*iyrec+mon) gmean(Tomm/ndm -Tomn_ctrl(:,:,mon))
-     write(43,rec=3*12*time_scnr+12*iyrec+mon) gmean(qmm/ndm -qmn_ctrl(:,:,mon))
-     write(43,rec=4*12*time_scnr+12*iyrec+mon) gmean(icmm/ndm -icmn_ctrl(:,:,mon))
+     write(103,rec=               12*iyrec+mon) gmean(Tmm/ndm  -Tmn_ctrl(:,:,mon))
+     write(103,rec=1*12*time_scnr+12*iyrec+mon) gmean(Tamm/ndm -Tamn_ctrl(:,:,mon))
+     write(103,rec=2*12*time_scnr+12*iyrec+mon) gmean(Tomm/ndm -Tomn_ctrl(:,:,mon))
+     write(103,rec=3*12*time_scnr+12*iyrec+mon) gmean(qmm/ndm -qmn_ctrl(:,:,mon))
+     write(103,rec=4*12*time_scnr+12*iyrec+mon) gmean(icmm/ndm -icmn_ctrl(:,:,mon))
+     write(103,rec=5*12*time_scnr+12*iyrec+mon) gmean(prmm/ndm -prmn_ctrl(:,:,mon))
      end if
-     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.;
+     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.;
      mon=mon+1; if (mon==13) mon=1
   end if
 
