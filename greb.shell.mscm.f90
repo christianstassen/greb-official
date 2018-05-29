@@ -69,11 +69,11 @@ end if
 
 ! open external forcing for climate change (ensemble mean) (it is read in forcing subroutine)
 if ( log_exp .eq. 230 ) then
-  open(31,file='../input/tsurf.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(32,file='../input/zonal.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(33,file='../input/meridional.wind.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(34,file='../input/omega.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(35,file='../input/windspeed.response.cmip5.ensmean', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(31,file='../input/cmip5.tsurf.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(32,file='../input/cmip5.zonal.wind.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(33,file='../input/cmip5.meridional.wind.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(35,file='../input/cmip5.windspeed.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   do i=1,nstep_yr ! Read in the anomalies
     read(31,rec=i) Tclim_anom_cc(:,:,i)
     read(32,rec=i) uclim_anom_cc(:,:,i)
