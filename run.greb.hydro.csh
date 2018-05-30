@@ -83,7 +83,7 @@ if (-d work ) rm -f work/*
 
 # settings for scenario
 # scenario number from list above
-set EXP=230
+set EXP=241
 
 # if scenario is forced climate change (EXP 230) or forced ENSO (EXP 240 or 241)
 # a deconstruction can be done similar to deconstrct 2xCO2 (see Stassen et. al 2018 submitted to GMD)

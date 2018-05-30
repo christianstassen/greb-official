@@ -1404,7 +1404,9 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
 
   ! diagnostics: monthly means
   Tmm=Tmm+Ts0; Tamm=Tamm+ta0; Tomm=Tomm+to0; qmm=qmm+q0; icmm=icmm+ice_cover;
-  prmm=prmm+dq_rain; evamm=evamm+dq_eva; qcrclmm=qcrclmm+dq_crcl;
+  prmm=prmm+dq_rain*(r_qviwv*wz_vapor);          ! kg/m2/s
+  evamm=evamm+dq_eva*(r_qviwv*wz_vapor);         ! kg/m2/s
+  qcrclmm=qcrclmm+dq_crcl*(r_qviwv*wz_vapor)/dt; ! kg/m2/s
 
 ! control output
   if (       jday == sum(jday_mon(1:mon))                   &
