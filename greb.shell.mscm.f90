@@ -93,11 +93,11 @@ if ( log_exp .eq. 230 ) then
   open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(35,file='../input/cmip5.windspeed.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   do i=1,nstep_yr ! Read in the anomalies
-    read(31,rec=i) Tclim_anom_cc(:,:,i)
-    read(32,rec=i) uclim_anom_cc(:,:,i)
-    read(33,rec=i) vclim_anom_cc(:,:,i)
-    read(34,rec=i) omegaclim_anom_cc(:,:,i)
-    read(35,rec=i) wsclim_anom_cc(:,:,i)
+    if (log_tsurf_ext .eq. 1) read(31,rec=i) Tclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 1) read(32,rec=i) uclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 1) read(33,rec=i) vclim_anom_cc(:,:,i)
+    if (log_omega_ext .eq. 1) read(34,rec=i) omegaclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 1) read(35,rec=i) wsclim_anom_cc(:,:,i)
   end do
 end if
 
@@ -119,11 +119,11 @@ if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then
     open(45,file='../input/erainterim.windspeed.lanina.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   end if
   do i=1,nstep_yr ! Read in the anomalies
-    read(41,rec=i) Tclim_anom_enso(:,:,i)
-    read(42,rec=i) uclim_anom_enso(:,:,i)
-    read(43,rec=i) vclim_anom_enso(:,:,i)
-    read(44,rec=i) omegaclim_anom_enso(:,:,i)
-    read(45,rec=i) wsclim_anom_enso(:,:,i)
+    if (log_tsurf_ext .eq. 1) read(41,rec=i) Tclim_anom_enso(:,:,i)
+    if (log_hwind_ext .eq. 1) read(42,rec=i) uclim_anom_enso(:,:,i)
+    if (log_hwind_ext .eq. 1) read(43,rec=i) vclim_anom_enso(:,:,i)
+    if (log_omega_ext .eq. 1) read(44,rec=i) omegaclim_anom_enso(:,:,i)
+    if (log_hwind_ext .eq. 1) read(45,rec=i) wsclim_anom_enso(:,:,i)
   end do
 end if ! ENSO forcing
 

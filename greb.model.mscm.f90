@@ -137,8 +137,12 @@ module mo_physics
 ! switches for the hydrological cycle
   integer  :: log_rain        = 0              ! process control precipitation parameterisation
   integer  :: log_eva         = 0              ! process control evaporation parameterisation
-  integer  :: log_conv         = 0              ! process control advection parameterisation
+  integer  :: log_conv        = 0              ! process control advection parameterisation
   integer  :: log_clim        = 0              ! process control for reference climatology
+! switches for external forcing files
+  integer  :: log_tsurf_ext   = 0              ! process control evaporation parameterisation
+  integer  :: log_hwind_ext   = 0              ! process control advection parameterisation
+  integer  :: log_omega_ext   = 0              ! process control for reference climatology
 
 ! parameters for scenarios
   real     :: dradius   = 0.		 ! deviations from actual earth radius in %
@@ -225,7 +229,8 @@ module mo_physics
 &                      log_hydro_dmc, log_qflux_dmc, 					                          &
 &                      log_topo_drsp, log_cloud_drsp, log_humid_drsp, log_hydro_drsp,   &
 &                      log_ocean_drsp, log_ice, log_hdif, log_hadv, log_vdif, log_vadv, &
-& 		                 S0_var, dradius, log_rain, log_eva, log_conv, log_clim
+& 		                 S0_var, dradius, log_rain, log_eva, log_conv, log_clim,          &
+&                      log_tsurf_ext, log_hwind_ext, log_omega_ext
 
 end module mo_physics
 

@@ -50,6 +50,15 @@ if (-d work ) rm -f work/*
 #  EXP = 100 run model with your own CO2 scenario
 #
 #
+#  EXP = 230 run a climate change experiment with forced boundary conditions
+#            (surface temperature, hodrizontal winds and omega) of the CMIP5
+#            rcp85 ensemble mean response
+#
+#  EXP = 240 & 241 run a El Nino (La Nina) experiment with forced boundary conditions
+#            (surface temperature, hodrizontal winds and omega) of the ERA-Interim
+#            composite mean response
+#
+#
 # some general remarks to the sensitivity experiments:
 # - all scenarios will start in 1950
 # - EXP 20-24 are abrupt climate change experiment, that will reach
@@ -75,6 +84,13 @@ if (-d work ) rm -f work/*
 # settings for scenario
 # scenario number from list above
 set EXP=230
+
+# if scenario is forced climate change (EXP 230) or forced ENSO (EXP 240 or 241)
+# a deconstruction can be done similar to deconstrct 2xCO2 (see Stassen et. al 2018 submitted to GMD)
+set log_tsurf_ext=$1 #force surface temperature with external file (0=no forcing; 1=forcing)
+set log_hwind_ext=$2 #force horizontal winds with external file (0=no forcing; 1=forcing)
+set log_omega_ext=$3 #force vertical velocity omega with external file (0=no forcing; 1=forcing)
+
 # length of sensitivity experiment in years
 set YEARS=5
 
@@ -149,6 +165,9 @@ time_scnr = $YEARS  	! length of scenario run [yrs]
 &PHYSICS
  log_exp = $EXP 	! sensitivity run as set above
  dradius = $DRAD	! deviations from the earth radius around the sun in %
+ log_tsurf_ext = $log_tsurf_ext
+ log_hwind_ext = $log_hwind_ext
+ log_omega_ext = $log_omega_ext
 /
 EOF
 
@@ -190,9 +209,9 @@ if ( $EXP == 97 ) set FILENAME=exp-${EXP}.IPCC.RCP45
 if ( $EXP == 98 ) set FILENAME=exp-${EXP}.IPCC.RCP60
 if ( $EXP == 99 ) set FILENAME=exp-${EXP}.IPCC.RCP85
 if ( $EXP == 100 ) set FILENAME=exp-${EXP}.${CO2input}
-if ( $EXP == 230 ) set FILENAME=exp-${EXP}.forced.climatechange.ensemblemean
-if ( $EXP == 240 ) set FILENAME=exp-${EXP}.forced.elnino.erainterim
-if ( $EXP == 241 ) set FILENAME=exp-${EXP}.forced.lanina.erainterim
+if ( $EXP == 230 ) set FILENAME=exp-${EXP}.forced.climatechange.ensemblemean.${log_tsurf_ext}${log_hwind_ext}${log_omega_ext}
+if ( $EXP == 240 ) set FILENAME=exp-${EXP}.forced.elnino.erainterim.${log_tsurf_ext}${log_hwind_ext}${log_omega_ext}
+if ( $EXP == 241 ) set FILENAME=exp-${EXP}.forced.lanina.erainterim.${log_tsurf_ext}${log_hwind_ext}${log_omega_ext}
 
 # rename scenario run output and move it to output folder
 mv scenario.bin ../output/scenario.${FILENAME}.bin
@@ -240,9 +259,9 @@ qcrcl 1 0 qcrcl
 endvars
 EOF
 
-echo ' '
-echo 'Convert output files to netcdf?'
-cd ../output
-sh ctl2nc.sh
+# echo ' '
+# echo 'Convert output files to netcdf?'
+# cd ../output
+# sh ctl2nc.sh
 
 exit
