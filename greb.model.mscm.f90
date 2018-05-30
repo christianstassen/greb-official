@@ -1394,8 +1394,8 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
 !    write output
 
   USE mo_numerics,     ONLY: xdim, ydim, jday_mon, ndt_days, nstep_yr, time_scnr &
-&                          , time_ctrl, ireal
-  USE mo_physics,      ONLY: jday, log_exp
+&                          , time_ctrl, ireal, dt
+  USE mo_physics,      ONLY: jday, log_exp, r_qviwv, wz_vapor
   use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm, qcrclmm &
 &                          , Tmn_ctrl, Tamn_ctrl, Tomn_ctrl, qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl, qcrclmn_ctrl
 
