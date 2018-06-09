@@ -1414,7 +1414,7 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
 &      .and. iunit == 101 ) then
      ndm=jday_mon(mon)*ndt_days
      if (it/float(ndt_days)  > 365*(time_ctrl-1)) then
-     if (log_exp .eq. 1 ) then
+     if (log_exp .eq. 1 .or. log_exp .eq. 230 ) then
      irec=irec+1;
      write(iunit,rec=8*irec-7)  Tmm/ndm
      write(iunit,rec=8*irec-6)  Tamm/ndm
