@@ -95,7 +95,7 @@ log_omega_ext = $LOG_OMEGA_EXT
 EOF
 
 # run model
-#./greb.x
+./greb.x
 
 # postprocessing
 # create output directory if does not already exist

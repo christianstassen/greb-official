@@ -1367,7 +1367,7 @@ subroutine forcing(it, year, CO2, Tsurf)
   end if
 
 ! Forced Climate Change run
-  if( log_exp .eq. 230 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
+  if( log_exp .eq. 230 .and. log_tsurf_ext .eq. 2 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
   if( log_exp .eq. 230 ) CO2   = 2*340.
 ! Forced ENSO run
   if( log_exp .eq. 240 .or. log_exp .eq. 241 ) Tsurf = Tclim(:,:,ityr)  ! Keep temp on external boundary condition
