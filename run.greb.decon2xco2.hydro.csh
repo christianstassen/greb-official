@@ -18,31 +18,30 @@ if (-d work ) rm -f work/*
 
 # switches to turn on (1) or off (0) the different processes
 # see mscm.dkrz.de => deconstruct 2xco2 response for details
-set LOG_TOPO  = 1	# topography
-set LOG_CLOUD = 1	# clouds
-set LOG_HUMID = 1	# humidity
-set LOG_HDIF  = 1	# heat diffusion
-set LOG_HADV  = 1	# heat advection
-set LOG_ICE   = 1	# ice albedo feedback
-set LOG_OCEAN = 1	# deep ocean heat uptake
-set LOG_HYDRO = 1	# hydrology
-set LOG_VDIF  = 1	# vapour diffusion
-set LOG_VADV  = 1	# vapour advection
+set LOG_TOPO  = ${10}	# topography
+set LOG_CLOUD = ${9}	# clouds
+set LOG_HUMID = ${8}	# humidity
+set LOG_HDIF  = ${7}	# heat diffusion
+set LOG_HADV  = ${6}	# heat advection
+set LOG_ICE   = ${5}	# ice albedo feedback
+set LOG_OCEAN = ${1}	# deep ocean heat uptake
+set LOG_HYDRO = ${4}	# hydrology
+set LOG_VDIF  = ${3}	# vapour diffusion
+set LOG_VADV  = ${2}	# vapour advection
 
 # Hydro cycle decomp
-set LOG_EVA        = 2 # 0=no-eva;   1=greb-eva;      2=forced-eva
-set LOG_OMEGA_EXT  = 2 # 0=no-omega; 1=??? ;          2=forced-omega
-set LOG_HWIND_EXT  = 2 # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl
-set LOG_TSURF_EXT  = 2 # 0 = ???;    1=greb-tsurf;    2=forced_tsurf
+set LOG_EVA        = ${12} # 0=no-eva;   1=greb-eva;      2=forced-eva
+set LOG_OMEGA_EXT  = ${13} # 0=no-omega; 1=??? ;          2=forced-omega
+set LOG_HWIND_EXT  = ${14} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl
+set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf
 
 # length of sensitivity experiment in years
 set YEARS=50
 
-
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
 #gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
-gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x # Christian
+gfortran -fopenmp -Ofast -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x # Christian
 ### ifortran compiler (Mac)
 # ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### g95 compiler (other Linux)
@@ -52,7 +51,7 @@ gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.she
 # END USER INPUT! #
 ###################
 
-setenv OMP_NUM_THREADS 2
+setenv OMP_NUM_THREADS 8
 setenv KMP_AFFINITY verbose,none
 
 set SCENARIO='climatechange'
@@ -96,8 +95,7 @@ log_omega_ext = $LOG_OMEGA_EXT
 EOF
 
 # run model
-chmod +x greb.x
-./greb.x
+#./greb.x
 
 # postprocessing
 # create output directory if does not already exist
@@ -167,5 +165,10 @@ eva 1 0 eva
 qcrcl 1 0 qcrcl
 endvars
 EOF
+
+cd ../output/
+sh ctl2nc_single_file.sh control.exp-${FILENAME}.ctl
+sh ctl2nc_single_file.sh response.exp-${FILENAME}.ctl
+sh ctl2nc_single_file.sh response.gmean.exp-${FILENAME}.ctl
 
 exit
