@@ -502,7 +502,8 @@ subroutine tendencies(CO2, Ts1, Ta1, To1, q1, ice_cover, SW, LW_surf, Q_lat, Q_s
 &                               dq_eva, dq_rain, dTa_crcl, dq_crcl, LW_surf,   &
 &                               dT_ocean, dTo
 
-!$omp parallel sections
+!$omp parallel
+!$omp sections
 !$omp section
     ! SW radiation model
     call SWradiation(Ts1, sw, ice_cover)
@@ -525,7 +526,8 @@ subroutine tendencies(CO2, Ts1, Ta1, To1, q1, ice_cover, SW, LW_surf, Q_lat, Q_s
 !$omp section
     ! deep ocean interaction
     call deep_ocean(Ts1, To1, dT_ocean, dTo)
-!$omp end parallel sections
+!$omp end sections
+!$omp end parallel
 
 end subroutine tendencies
 
