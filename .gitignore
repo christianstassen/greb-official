@@ -3,3 +3,5 @@
 *.bin
 *.ctl
 *.nc
+*.mod
+work/
