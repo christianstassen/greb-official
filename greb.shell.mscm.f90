@@ -37,6 +37,7 @@ if ( log_clim .eq. 0 ) then ! ERA-Interim
   open(22,file='../input/erainterim.windspeed.850hpa.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(23,file='../input/erainterim.omega.vertmean.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(24,file='../input/erainterim.omega_std.vertmean.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(25,file='../input/erainterim.evaporation.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
 else if ( log_clim .eq. 1 ) then ! NCEP
   open(11,file='../input/ncep.tsurf.1948-2007.clim.bin',  	ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(12,file='../input/ncep.zonal_wind.850hpa.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
@@ -67,7 +68,10 @@ do n=1,nstep_yr
    read(22,rec=n) wsclim(:,:,n)
    read(23,rec=n) omegaclim(:,:,n)
    read(24,rec=n) omegastdclim(:,:,n)
+   read(25,rec=n) dqevalim(:,:,n)
 end do
+
+
 
 ! read fix data
 read(19,rec=1)  z_topo
@@ -92,12 +96,14 @@ if ( log_exp .eq. 230 ) then
   open(33,file='../input/cmip5.meridional.wind.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(35,file='../input/cmip5.windspeed.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(36,file='../input/cmip5.evaporation.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   do i=1,nstep_yr ! Read in the anomalies
-    if (log_tsurf_ext .eq. 1) read(31,rec=i) Tclim_anom_cc(:,:,i)
-    if (log_hwind_ext .eq. 1) read(32,rec=i) uclim_anom_cc(:,:,i)
-    if (log_hwind_ext .eq. 1) read(33,rec=i) vclim_anom_cc(:,:,i)
-    if (log_omega_ext .eq. 1) read(34,rec=i) omegaclim_anom_cc(:,:,i)
-    if (log_hwind_ext .eq. 1) read(35,rec=i) wsclim_anom_cc(:,:,i)
+    if (log_tsurf_ext .eq. 2) read(31,rec=i) Tclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 2) read(32,rec=i) uclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 2) read(33,rec=i) vclim_anom_cc(:,:,i)
+    if (log_omega_ext .eq. 2) read(34,rec=i) omegaclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 2) read(35,rec=i) wsclim_anom_cc(:,:,i)
+    if (log_eva .eq. 2) read(36,rec=i) dqeva_anom_cc(:,:,i)
   end do
 end if
 
