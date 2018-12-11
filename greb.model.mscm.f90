@@ -194,7 +194,7 @@ module mo_physics
 ! declare climate fields
   real, dimension(xdim,ydim)          ::  z_topo, glacier,z_ocean
   real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim, omegastdclim, wsclim
-  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim
+  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevalim
   real, dimension(xdim,ydim,nstep_yr) ::  TF_correct, qF_correct, ToF_correct, swetclim, dTrad
   real, dimension(ydim,nstep_yr)      ::  sw_solar, sw_solar_ctrl, sw_solar_scnr
   real, dimension(xdim,ydim)          ::  co2_part      = 1.0
@@ -211,6 +211,7 @@ module mo_physics
   real, dimension(xdim,ydim,nstep_yr) ::   vclim_anom_cc       = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   omegaclim_anom_cc   = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   wsclim_anom_cc      = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   dqeva_anom_cc      = 0.
 
 ! declare constant fields
   real, dimension(xdim,ydim)          ::  cap_surf
@@ -684,7 +685,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 &                           ce, cq_latent, cq_rain, z_air, r_qviwv, log_exp, &
 &                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp,    &
 &                           omegaclim, omegastdclim, wsclim,  wz_vapor,      &
-&                           c_q, c_rq, c_omega, c_omegastd                   ! Rainfall parameters
+&                           c_q, c_rq, c_omega, c_omegastd, log_eva, dqevalim                   ! Rainfall parameters
 
 ! declare temporary fields
   real, dimension(xdim,ydim)  :: Tsurf, Tskin, q, Qlat, Qlat_air, qs, dq_eva, &
@@ -715,18 +716,20 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
     where(z_topo > 0. ) abswind = sqrt(abswind**2 + 2.0**2) !< land turbulent wind
     where(z_topo < 0. ) abswind = sqrt(abswind**2 + 3.0**2) !< ocean turbulent wind
     Qlat   = (q-qs)*abswind*cq_latent*rho_air*ce*swetclim(:,:,ityr) ! latend heat flux
-  else if ( log_eva == 1 ) then
-    where(z_topo > 0. ) abswind = sqrt(abswind**2 + 144.**2) ! land turbulent wind
-    where(z_topo < 0. ) abswind = sqrt(abswind**2 + 7.1**2) ! ocean turbulent wind
-    where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.04*ce*swetclim(:,:,ityr) ! latend heat flux land
-    where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.73*ce*swetclim(:,:,ityr) ! latend heat flux ocean
-  else if ( log_eva == 2 ) then
-    abswind = wsclim(:,:,ityr) ! use the wind speed climatology
-    where(z_topo > 0. )  abswind = sqrt(abswind**2 + 9.0**2) ! land turbulent wind
-    where(z_topo <= 0. ) abswind = sqrt(abswind**2 + 4.0**2) ! ocean turbulent wind
-    where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.56*ce*swetclim(:,:,ityr) ! latend heat flux land
-    where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.79*ce*swetclim(:,:,ityr) ! latend heat flux ocean
   else if ( log_eva == 0 ) then
+    Qlat = 0.
+!  else if ( log_eva == 1 ) then
+!    where(z_topo > 0. ) abswind = sqrt(abswind**2 + 144.**2) ! land turbulent wind
+!    where(z_topo < 0. ) abswind = sqrt(abswind**2 + 7.1**2) ! ocean turbulent wind
+!    where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.04*ce*swetclim(:,:,ityr) ! latend heat flux land
+!    where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.73*ce*swetclim(:,:,ityr) ! latend heat flux ocean
+!  else if ( log_eva == 2 ) then
+!    abswind = wsclim(:,:,ityr) ! use the wind speed climatology
+!    where(z_topo > 0. )  abswind = sqrt(abswind**2 + 9.0**2) ! land turbulent wind
+!    where(z_topo <= 0. ) abswind = sqrt(abswind**2 + 4.0**2) ! ocean turbulent wind
+!    where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.56*ce*swetclim(:,:,ityr) ! latend heat flux land
+!    where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.79*ce*swetclim(:,:,ityr) ! latend heat flux ocean
+  else if ( log_eva == 1 ) then
     where(z_topo > 0. )  Tskin = Tsurf + 5. ! skin temperature land
     where(z_topo <= 0. ) Tskin = Tsurf + 1. ! skin temperature ocean
     qs = 3.75e-3*exp(17.08085*(Tskin-273.15)/(Tskin-273.15+234.175)) ! re-calculate saturation pressure
@@ -735,6 +738,8 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
     where(z_topo <= 0. ) abswind = sqrt(wsclim(:,:,ityr)**2 + 5.4**2) ! ocean turbulent wind
     where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.25*ce*swetclim(:,:,ityr) ! latend heat flux land
     where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.58*ce*swetclim(:,:,ityr) ! latend heat flux ocean
+  else if ( log_eva == 2 ) then
+    Qlat = dqevalim(:,:,ityr)
   end if
 ! change in water vapor
   dq_eva  = -Qlat/cq_latent/r_qviwv  ! evaporation

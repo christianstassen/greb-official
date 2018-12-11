@@ -30,10 +30,10 @@ set LOG_VDIF  = 1	# vapour diffusion
 set LOG_VADV  = 1	# vapour advection
 
 # Hydro cycle decomp
-set LOG_EVA        = 2 # 0=no-eva;   1=greb-eva; 2=forced-eva
-set LOG_OMEGA_EXT  = 1 # 0=no-omega; 1=??? ;     2=forced-omega
-set LOG_HWIND_EXT  = 1 # 0 and 1 would be set in LOG_DIFF and LOG_ADV; 2=forced-crcl
-set LOG_TSURF_EXT  = 1
+set LOG_EVA        = 2 # 0=no-eva;   1=greb-eva;      2=forced-eva
+set LOG_OMEGA_EXT  = 2 # 0=no-omega; 1=??? ;          2=forced-omega
+set LOG_HWIND_EXT  = 2 # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl
+set LOG_TSURF_EXT  = 2 # 0 = ???;    1=greb-tsurf;    2=forced_tsurf
 
 # length of sensitivity experiment in years
 set YEARS=50
