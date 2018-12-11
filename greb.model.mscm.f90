@@ -421,6 +421,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      vclim      = vclim + vclim_anom_cc
      omegaclim  = omegaclim + omegaclim_anom_cc
      wsclim     = wsclim + wsclim_anom_cc
+     dqevalim   = dqevalim + dqeva_anom_cc
   end if
   if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then ! change boundary conditions for ENSO forcing
      Tclim      = Tclim + Tclim_anom_enso
@@ -1365,7 +1366,7 @@ subroutine forcing(it, year, CO2, Tsurf)
 
 ! Forced Climate Change run
   if( log_exp .eq. 230 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
-
+  if( log_exp .eq. 230 ) CO2   = 2*340.
 ! Forced ENSO run
   if( log_exp .eq. 240 .or. log_exp .eq. 241 ) Tsurf = Tclim(:,:,ityr)  ! Keep temp on external boundary condition
 
@@ -1428,7 +1429,7 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
 &      .and. iunit == 101 ) then
      ndm=jday_mon(mon)*ndt_days
      if (it/float(ndt_days)  > 365*(time_ctrl-1)) then
-     if (log_exp .eq. 1 .or. log_exp .eq. 230 ) then
+     !if (log_exp .eq. 1 .or. log_exp .eq. 230 ) then
      irec=irec+1;
      write(iunit,rec=8*irec-7)  Tmm/ndm
      write(iunit,rec=8*irec-6)  Tamm/ndm
@@ -1438,7 +1439,7 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
      write(iunit,rec=8*irec-2)  prmm/ndm
      write(iunit,rec=8*irec-1) evamm/ndm
      write(iunit,rec=8*irec) qcrclmm/ndm
-     else
+     !else
      Tmn_ctrl(:,:,mon)     =   Tmm/ndm
      Tamn_ctrl(:,:,mon)    =  Tamm/ndm
      Tomn_ctrl(:,:,mon)    =  Tomm/ndm
@@ -1447,7 +1448,7 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
      prmn_ctrl(:,:,mon)    =  prmm/ndm
      evamn_ctrl(:,:,mon)   = evamm/ndm
      qcrclmn_ctrl(:,:,mon) = qcrclmm/ndm
-     end if
+     !end if
      end if
      Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
      mon=mon+1; if (mon==13) mon=1
