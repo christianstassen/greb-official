@@ -51,7 +51,9 @@ This requires additional libraries for python (i.e. netcdf-python).
 The model has only been tested on Linux (Ubuntu) and Mac Os (High Sierra). It might not be running on other operating systems and/or versions.
 Good luck with running the model.
 
-### Contribution guidelines ###
+### Citation ###
+DOI of model source code: 10.5281/zenodo.2232282
+Paper: Stassen, C., Dommenget, D., and Loveday, N.: A Hydrological Cycle Model for the Globally Resolved Energy Balance Model (GREB) v1.0, Geosci. Model Dev. Discuss., https://doi.org/10.5194/gmd-2018-131, in review, 2018.
 
 ### Who do I talk to? ###
 
