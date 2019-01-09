@@ -32,11 +32,12 @@ set LOG_VADV  = ${2}	# vapour advection
 # Hydro cycle decomp
 set LOG_EVA        = ${12} # 0=no-eva;   1=greb-eva;      2=forced-eva
 set LOG_OMEGA_EXT  = ${13} # 0=no-omega; 1=??? ;          2=forced-omega
-set LOG_HWIND_EXT  = ${14} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl
+set LOG_OMEGASTD_EXT  = ${14} # 0=no-omega_std; 1=??? ;   2=forced-omega_std
+set LOG_HWIND_EXT  = ${15} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl
 set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf
 
 # length of sensitivity experiment in years
-set YEARS=50
+set YEARS=5
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
@@ -56,7 +57,7 @@ setenv KMP_AFFINITY verbose,none
 
 set SCENARIO='climatechange'
 set NUMBER=${LOG_OCEAN}${LOG_VADV}${LOG_VDIF}${LOG_HYDRO}${LOG_ICE}${LOG_HADV}${LOG_HDIF}${LOG_HUMID}${LOG_CLOUD}${LOG_TOPO}
-set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_HWIND_EXT}
+set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_OMEGASTD_EXT}${LOG_HWIND_EXT}
 set FILENAME=${NUMBER}HYDRO${HYDRO_NUMBER}.${SCENARIO}
 echo 'EXPERIMENT: '${FILENAME}
 
@@ -91,6 +92,7 @@ log_eva     = $LOG_EVA
 log_tsurf_ext = $LOG_TSURF_EXT
 log_hwind_ext = $LOG_HWIND_EXT
 log_omega_ext = $LOG_OMEGA_EXT
+log_omegastd_ext = $LOG_OMEGASTD_EXT
 /
 EOF
 

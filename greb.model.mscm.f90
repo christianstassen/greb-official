@@ -143,6 +143,7 @@ module mo_physics
   integer  :: log_tsurf_ext   = 0              ! process control evaporation parameterisation
   integer  :: log_hwind_ext   = 0              ! process control advection parameterisation
   integer  :: log_omega_ext   = 0              ! process control for reference climatology
+  integer  :: log_omegastd_ext= 0              ! process control for reference climatology
 
 ! parameters for scenarios
   real     :: dradius   = 0.		 ! deviations from actual earth radius in %
@@ -210,6 +211,7 @@ module mo_physics
   real, dimension(xdim,ydim,nstep_yr) ::   uclim_anom_cc       = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   vclim_anom_cc       = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   omegaclim_anom_cc   = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   omegastdclim_anom_cc   = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   wsclim_anom_cc      = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   dqeva_anom_cc      = 0.
 
@@ -231,7 +233,7 @@ module mo_physics
 &                      log_topo_drsp, log_cloud_drsp, log_humid_drsp, log_hydro_drsp,   &
 &                      log_ocean_drsp, log_ice, log_hdif, log_hadv, log_vdif, log_vadv, &
 & 		                 S0_var, dradius, log_rain, log_eva, log_conv, log_clim,          &
-&                      log_tsurf_ext, log_hwind_ext, log_omega_ext
+&                      log_tsurf_ext, log_hwind_ext, log_omega_ext, log_omegastd_ext
 
 end module mo_physics
 
@@ -411,6 +413,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      uclim      = uclim + uclim_anom_cc
      vclim      = vclim + vclim_anom_cc
      omegaclim  = omegaclim + omegaclim_anom_cc
+     omegastdclim= omegastdclim + omegastdclim_anom_cc
      wsclim     = wsclim + wsclim_anom_cc
      dqevalim   = dqevalim + dqeva_anom_cc
   end if
@@ -1262,8 +1265,8 @@ subroutine forcing(it, year, CO2, Tsurf)
 !+++++++++++++++++++++++++++++++++++++++
 
   USE mo_numerics,    ONLY: xdim, ydim, ndays_yr, ndt_days, nstep_yr
-  USE mo_physics,     ONLY: log_exp, sw_solar, sw_solar_ctrl, sw_solar_scnr,     &
-&                           co2_part, co2_part_scn, z_topo, ityr, Tclim
+  USE mo_physics,     ONLY: log_exp, log_tsurf_ext, sw_solar, sw_solar_ctrl, &
+&                            sw_solar_scnr, co2_part, co2_part_scn, z_topo, ityr, Tclim
   USE mo_diagnostics,  ONLY: icmn_ctrl
 
   ! input fields
