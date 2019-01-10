@@ -30,7 +30,7 @@ set LOG_VDIF  = ${3}	# vapour diffusion
 set LOG_VADV  = ${2}	# vapour advection
 
 # Hydro cycle decomp
-set LOG_EVA        = ${12} # 0=no-eva;   1=greb-eva;      2=forced-eva;       3=PI-not-responding (not implemented)
+set LOG_EVA        = ${12} # 0=no-eva;   1=greb-eva;      2=forced-eva;       3=PI-not-responding (forced to CMIP)
 set LOG_OMEGA_EXT  = ${13} # 0=no-omega; 1=??? ;          2=forced-omega;     3=PI-not-responding
 set LOG_OMEGASTD_EXT  = ${14} # 0=no-omegastd; 1=??? ;    2=forced-omega_std; 3=PI-not-responding
 set LOG_HWIND_EXT  = ${15} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl;      3=PI-not-responding
