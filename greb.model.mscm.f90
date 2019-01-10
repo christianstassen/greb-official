@@ -744,8 +744,8 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
     where(z_topo <= 0. ) abswind = sqrt(wsclim(:,:,ityr)**2 + 5.4**2) ! ocean turbulent wind
     where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.25*ce*swetclim(:,:,ityr) ! latend heat flux land
     where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.58*ce*swetclim(:,:,ityr) ! latend heat flux ocean
-  else if ( log_eva == 2 ) then
-    Qlat = dqevalim(:,:,ityr)
+  else if ( log_eva == 2 .or. log_eva == 3 ) then
+    Qlat = dqevalim(:,:,ityr)*cq_latent
   end if
 ! change in water vapor
   dq_eva  = -Qlat/cq_latent/r_qviwv  ! evaporation
