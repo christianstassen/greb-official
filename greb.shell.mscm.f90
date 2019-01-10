@@ -66,8 +66,8 @@ do n=1,nstep_yr
    read(17,rec=n) Toclim(:,:,n)
    read(18,rec=n) mldclim(:,:,n)
    read(22,rec=n) wsclim(:,:,n)
-   read(23,rec=n) omegaclim(:,:,n)
-   read(24,rec=n) omegastdclim(:,:,n)
+   if (log_omega_ext .gt. 1)    read(23,rec=n) omegaclim(:,:,n)
+   if (log_omegastd_ext .gt. 1) read(24,rec=n) omegastdclim(:,:,n)
    read(25,rec=n) dqevalim(:,:,n)
 end do
 
