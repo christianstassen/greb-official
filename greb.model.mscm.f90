@@ -194,7 +194,7 @@ module mo_physics
 
 ! declare climate fields
   real, dimension(xdim,ydim)          ::  z_topo, glacier,z_ocean
-  real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim, omegastdclim, wsclim
+  real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim=0., omegastdclim=0., wsclim
   real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevalim
   real, dimension(xdim,ydim,nstep_yr) ::  TF_correct, qF_correct, ToF_correct, swetclim, dTrad
   real, dimension(ydim,nstep_yr)      ::  sw_solar, sw_solar_ctrl, sw_solar_scnr
