@@ -68,7 +68,7 @@ do n=1,nstep_yr
    read(22,rec=n) wsclim(:,:,n)
    if (log_omega_ext .gt. 1)    read(23,rec=n) omegaclim(:,:,n)
    if (log_omegastd_ext .gt. 1) read(24,rec=n) omegastdclim(:,:,n)
-   read(25,rec=n) dqevalim(:,:,n)
+   read(25,rec=n) dqevaclim(:,:,n)
 end do
 
 
@@ -107,6 +107,7 @@ if ( log_exp .eq. 230 ) then
     if (log_hwind_ext .eq. 2) read(36,rec=i) wsclim_anom_cc(:,:,i)
     if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
   end do
+  dqeva_anom_cc = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
 end if
 
 ! ENSO forcing
