@@ -204,7 +204,7 @@ module mo_physics
 ! declare climate fields
   real, dimension(xdim,ydim)          ::  z_topo, glacier,z_ocean
   real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim=0., omegastdclim=0., wsclim
-  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevalim
+  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevaclim
   real, dimension(xdim,ydim,nstep_yr) ::  TF_correct, qF_correct, ToF_correct, swetclim, dTrad
   real, dimension(ydim,nstep_yr)      ::  sw_solar, sw_solar_ctrl, sw_solar_scnr
   real, dimension(xdim,ydim)          ::  co2_part      = 1.0
@@ -417,14 +417,14 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      rS0 = (1/radius)**2
      sw_solar = rS0*sw_solar
   end if
-  if ( log_exp .eq. 230 ) then ! change boundary conditions for Climate Change forcing
+  if ( log_exp .eq. 230 ) then ! change boundary conditions for climate change forcing
      Tclim      = Tclim + Tclim_anom_cc
      uclim      = uclim + uclim_anom_cc
      vclim      = vclim + vclim_anom_cc
      omegaclim  = omegaclim + omegaclim_anom_cc
      omegastdclim= omegastdclim + omegastdclim_anom_cc
      wsclim     = wsclim + wsclim_anom_cc
-     dqevalim   = dqevalim + dqeva_anom_cc
+     dqevaclim   = dqevaclim + dqeva_anom_cc
   end if
   if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then ! change boundary conditions for ENSO forcing
      Tclim      = Tclim + Tclim_anom_enso
@@ -700,7 +700,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 &                           ce, cq_latent, cq_rain, z_air, r_qviwv, log_exp, &
 &                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp,    &
 &                           omegaclim, omegastdclim, wsclim,  wz_vapor,      &
-&                           c_q, c_rq, c_omega, c_omegastd, log_eva, dqevalim                   ! Rainfall parameters
+&                           c_q, c_rq, c_omega, c_omegastd, log_eva, dqevaclim                   ! Rainfall parameters
 
 ! declare temporary fields
   real, dimension(xdim,ydim)  :: Tsurf, Tskin, q, Qlat, Qlat_air, qs, dq_eva, &
@@ -754,7 +754,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
     where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.25*ce*swetclim(:,:,ityr) ! latend heat flux land
     where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.58*ce*swetclim(:,:,ityr) ! latend heat flux ocean
   else if ( log_eva == 2 .or. log_eva == 3 ) then
-    Qlat = dqevalim(:,:,ityr)*cq_latent
+    Qlat = dqevaclim(:,:,ityr)*cq_latent
   end if
 ! change in water vapor
   dq_eva  = -Qlat/cq_latent/r_qviwv  ! evaporation
