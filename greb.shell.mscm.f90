@@ -71,7 +71,12 @@ do n=1,nstep_yr
    read(25,rec=n) dqevaclim(:,:,n)
 end do
 
-
+!Subtract the annual field mean
+print*, SUM(omegaclim)/SIZE(omegaclim)
+do n=1,nstep_yr
+   if (log_omega_ext .gt. 1) omegaclim(:,:,n) = omegaclim(:,:,n) - SUM(omegaclim(:,:,n))/SIZE(omegaclim(:,:,n))
+end do
+print*, SUM(omegaclim)/SIZE(omegaclim)
 
 ! read fix data
 read(19,rec=1)  z_topo
@@ -91,13 +96,20 @@ end if
 
 ! open external forcing for climate change (ensemble mean) (it is read in forcing subroutine)
 if ( log_exp .eq. 230 ) then
-  open(31,file='../input/cmip5.tsurf.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(32,file='../input/cmip5.zonal.wind.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(33,file='../input/cmip5.meridional.wind.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(35,file='../input/cmip5.omegastd.rcp85.ensmean.vertmean.forcing.bin',ACCESS='DIRECT',FORM='UNFORMATTED',RECL=ireal*xdim*ydim)
-  open(36,file='../input/cmip5.windspeed.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(37,file='../input/cmip5.evaporation.rcp85.ensmean.forcing.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(31,file='../input/cmip5.tsurf.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(32,file='../input/cmip5.zonal.wind.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(33,file='../input/cmip5.meridional.wind.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(35,file='../input/cmip5.omegastd.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED',RECL=ireal*xdim*ydim)
+  open(36,file='../input/cmip5.windspeed.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(37,file='../input/cmip5.evaporation.rcp85.ensmean.forcing.new.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   do i=1,nstep_yr ! Read in the anomalies
     if (log_tsurf_ext .eq. 2) read(31,rec=i) Tclim_anom_cc(:,:,i)
     if (log_hwind_ext .eq. 2) read(32,rec=i) uclim_anom_cc(:,:,i)
@@ -107,6 +119,7 @@ if ( log_exp .eq. 230 ) then
     if (log_hwind_ext .eq. 2) read(36,rec=i) wsclim_anom_cc(:,:,i)
     if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
   end do
+  if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.02 * SUM(Tclim_anom_cc)/SIZE(Tclim_anom_cc)
   dqeva_anom_cc = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
 end if
 
