@@ -37,7 +37,7 @@ set LOG_HWIND_EXT  = ${15} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl;      3=
 set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf;     3=PI-not-responding
 
 # length of sensitivity experiment in years
-set YEARS=5
+set YEARS=50
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)

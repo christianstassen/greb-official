@@ -330,6 +330,12 @@ subroutine greb_model
      vclim_p = vclim
   end where
 
+  ! If omega is switched off change the rainfall model
+  if ( log_omega_ext == 0 ) then
+    log_rain=2
+    print*, 'Switched rainfall model to ', log_rain
+  end if
+
   ! initialize the rainfall parameterisation
   select case( log_rain )
   case(-1) ! Original GREB
@@ -744,7 +750,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
     where(z_topo <= 0. ) abswind = sqrt(wsclim(:,:,ityr)**2 + 5.4**2) ! ocean turbulent wind
     where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.25*ce*swetclim(:,:,ityr) ! latend heat flux land
     where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.58*ce*swetclim(:,:,ityr) ! latend heat flux ocean
-  else if ( log_eva == 2 .or. log_eva == 3 ) then
+  else if ( log_eva == 2 .or. log_eva == 3 .or. log_eva == 4 ) then
     Qlat = dqevaclim(:,:,ityr)*cq_latent
   end if
 ! change in water vapor
@@ -1254,7 +1260,7 @@ subroutine convergence(T1, div)
       !< Vertical velocity omega (Pa/s) to m/s
       w = -omegaclim(i,j,ityr) / (rho_air*grav)
       !< Convergence
-      div(i,j) = T1(i,j) * w * dt_crcl / z_vapor * 2.5
+      div(i,j) = T1(i,j) * w * dt_crcl / z_vapor * 1.
     end do
   end do
 
