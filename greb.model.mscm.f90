@@ -357,6 +357,7 @@ subroutine greb_model
       c_q=-0.2685845; c_rq=1.4591853; c_omega=-26.9858807; c_omegastd=0.
     case(0) ! Best GREB
         c_q=-1.88; c_rq=2.25; c_omega=-17.69; c_omegastd=59.07 ! Rainfall parameters (ERA-Interim)
+        !c_q=-1.82; c_rq=2.08; c_omega=-17.17; c_omegastd=59.29 ! Rainfall parameters (ERA-Interim, zero omega mean)
       if (log_clim == 1) then
         c_q=-1.27; c_rq=1.99; c_omega=-16.54; c_omegastd=21.15 ! Rainfall parameters (NCEP)
       end if
@@ -768,7 +769,8 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 ! precipitation -> Eq. 11 in Stassen et al 2019
 ! Parameters in unused terms are set to zero
   dq_rain = (c_q + c_rq*rq + c_omega*omegaclim(:,:,ityr) + c_omegastd*omegastdclim(:,:,ityr))*cq_rain*q
-  where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
+  !where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
+  where(dq_rain >= 0. ) dq_rain = 0.  !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
 
 ! latent heat flux atmos
   Qlat_air = -dq_rain*cq_latent*r_qviwv
@@ -877,8 +879,10 @@ subroutine circulation(X_in, dX_crcl, h_scl, wz)
   do tt=1, time   ! time loop circulation
 ! dmc & decon2xco2 switch
      if (log_vdif == 1 .and. h_scl .eq. z_vapor) call diffusion(X, dx_diffuse, h_scl, wz)
-     if (log_vadv == 1 .and. h_scl .eq. z_vapor) call advection(X, dx_advec, h_scl, wz)
+     if (log_vadv == 1 .and. h_scl .eq. z_vapor &
+     &                        .and. log_conv==0) call advection(X, dx_advec, h_scl, wz)
      if (log_conv == 0 .and. h_scl .eq. z_vapor) call convergence(X, dx_conv)
+     if (log_conv == 1 .and. h_scl .eq. z_vapor) call advection_finite_volume_pwl_slimit(X, dx_advec, h_scl, wz)
      if (log_hdif == 1 .and. h_scl .eq. z_air)   call diffusion(X, dx_diffuse, h_scl, wz)
      if (log_hadv == 1 .and. h_scl .eq. z_air)   call advection(X, dx_advec, h_scl, wz)
      X = X + dx_diffuse + dx_advec + dx_conv
@@ -1269,11 +1273,455 @@ subroutine convergence(T1, div)
       !< Vertical velocity omega (Pa/s) to m/s
       w = -omegaclim(i,j,ityr) / (rho_air*grav)
       !< Convergence
-      div(i,j) = T1(i,j) * w * dt_crcl / z_vapor * 1.
+      div(i,j) = T1(i,j) * w * dt_crcl / z_vapor * 2.5
     end do
   end do
 
 end subroutine convergence
+
+!+++++++++++++++++++++++++++++++++++++++
+subroutine advection_finite_volume_pwl_slimit(T1, dX_advec,h_scl, wz)
+!+++++++++++++++++++++++++++++++++++++++
+    USE mo_numerics, ONLY: xdim, ydim, dt, dlon, dlat, dt_crcl
+    USE mo_physics,  ONLY: pi, z_topo, uclim, vclim, ityr, z_vapor, log_exp
+    USE mo_physics,  ONLY: uclim_m, uclim_p, vclim_m, vclim_p
+    IMPLICIT NONE
+
+    real, dimension(xdim,ydim), intent(in)  :: T1, wz
+    real                      , intent(in)  :: h_scl
+    real, dimension(xdim,ydim), intent(out) :: dX_advec
+    real, dimension(xdim,ydim)              :: Twz
+
+    integer :: i
+    integer, dimension(ydim):: ilat = (/(i,i=1,ydim)/)
+    real, dimension(ydim)   :: lat, dx
+    real                    :: sa, sb, sc, sd
+    real                    :: uA, vB, uC, vD
+    real                    :: fA, fB, fC, fD
+
+    real    :: deg, dy
+    integer :: j, k, km1, kp1, kp2, kp3, jm1, jp1, jp2, jp3
+
+    deg      = 2.*pi*6.371e6/360.;   ! length of 1deg latitude [m]
+    dy       = dlat*deg
+    lat      = dlat*ilat-dlat/2.-90.
+    dx       = dlon*deg*cos(2.*pi/360.*lat)
+    dX_advec = 0.
+
+    !< Get advection variable by multiplying variable with wz
+    Twz = T1*wz
+
+    !< Whole domain except boundaries and corners
+    do k=2, ydim-3
+        do j=2, xdim-3
+                km1=k-1; kp1=k+1; kp2=k+2; kp3=k+3; jm1=j-1; jp1=j+1; jp2=j+2; jp3=j+3
+
+                !< Slopes
+                sa = (Twz(j,k)-Twz(jm1,k)) / dx(k)
+                sb = (Twz(j,kp1)-Twz(j,k)) / dy
+                sc = (Twz(jp1,k)-Twz(j,k)) / dx(k)
+                sd = (Twz(j,k)-Twz(j,km1)) / dy
+
+                !< Mean winds on boundaries of cell
+                uA = ( uclim(jm1,k,ityr)+uclim(j,k,ityr) ) / 2.
+                vB = ( vclim(j,kp1,ityr)+vclim(j,k,ityr) ) / 2.
+                uC = ( uclim(jp1,k,ityr)+uclim(j,k,ityr) ) / 2.
+                vD = ( vclim(j,km1,ityr)+vclim(j,k,ityr) ) / 2.
+
+                !< Flux over cell coundaries
+                !< fA
+                if (uA > 0.) then
+                    sa = minmod( (Twz(j,k)-Twz(jm1,k)) / dx(k), (Twz(jp1,k)-Twz(j,k)) / dx(k) )
+                    fA = (uA * Twz(jm1,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+                else if (uA < 0.) then
+                    sa = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+                    fA = (uA * Twz(j,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+                else
+                    fA = 0.
+                end if
+
+                !< fB
+                if (vB > 0.) then
+                    sb = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+                    fB = (vB * Twz(j,k) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+                else if (vB < 0.) then
+                    sb = minmod( (Twz(j,kp2)-Twz(j,kp1)) / dy, (Twz(j,kp3)-Twz(j,kp2)) / dy )
+                    fB = (vB * Twz(j,kp1) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+                else
+                    fB = 0.
+                end if
+
+                !< fC
+                if (uC > 0.) then
+                    sc = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+                    fC = (uC * Twz(j,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+                else if (uC < 0.) then
+                    sc = minmod( (Twz(jp2,k)-Twz(jp1,k)) / dx(k), (Twz(jp3,k)-Twz(jp2,k)) / dx(k) )
+                    fC = (uC * Twz(jp1,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+                else
+                    fC = 0.
+                end if
+
+                !< fD
+                if (vD > 0.) then
+                    sd = minmod( (Twz(j,k)-Twz(j,km1)) / dy, (Twz(j,kp1)-Twz(j,k)) / dy )
+                    fD = (vD * Twz(j,km1) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+                else if (vD < 0.) then
+                    sd = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+                    fD = (vD * Twz(j,k) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+                else
+                    fD = 0.
+                end if
+
+                dX_advec(j,k) = dt_crcl * ( fA - fB - fC + fD )
+
+           end do
+    end do
+
+    !< Boundaries
+    !< Left boundary
+    j=1
+    do k=2, ydim-3
+        km1=k-1; kp1=k+1; kp2=k+2; kp3=k+3; jm1=xdim; jp1=j+1; jp2=j+2; jp3=j+3
+
+        !< Slopes
+        sa = (Twz(j,k)-Twz(jm1,k)) / dx(k)
+        sb = (Twz(j,kp1)-Twz(j,k)) / dy
+        sc = (Twz(jp1,k)-Twz(j,k)) / dx(k)
+        sd = (Twz(j,k)-Twz(j,km1)) / dy
+
+        !< Mean winds on boundaries of cell
+        uA = ( uclim(jm1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vB = ( vclim(j,kp1,ityr)+vclim(j,k,ityr) ) / 2.
+        uC = ( uclim(jp1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vD = ( vclim(j,km1,ityr)+vclim(j,k,ityr) ) / 2.
+
+        !< Flux over cell coundaries
+        !< fA
+        if (uA > 0.) then
+            sa = minmod( (Twz(j,k)-Twz(jm1,k)) / dx(k), (Twz(jp1,k)-Twz(j,k)) / dx(k) )
+            fA = (uA * Twz(jm1,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else if (uA < 0.) then
+            sa = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fA = (uA * Twz(j,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else
+            fA = 0.
+        end if
+
+        !< fB
+        if (vB > 0.) then
+            sb = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fB = (vB * Twz(j,k) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else if (vB < 0.) then
+            sb = minmod( (Twz(j,kp2)-Twz(j,kp1)) / dy, (Twz(j,kp3)-Twz(j,kp2)) / dy )
+            fB = (vB * Twz(j,kp1) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else
+            fB = 0.
+        end if
+
+        !< fC
+        if (uC > 0.) then
+            sc = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fC = (uC * Twz(j,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else if (uC < 0.) then
+            sc = minmod( (Twz(jp2,k)-Twz(jp1,k)) / dx(k), (Twz(jp3,k)-Twz(jp2,k)) / dx(k) )
+            fC = (uC * Twz(jp1,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else
+            fC = 0.
+        end if
+
+        !< fD
+        if (vD > 0.) then
+            sd = minmod( (Twz(j,k)-Twz(j,km1)) / dy, (Twz(j,kp1)-Twz(j,k)) / dy )
+            fD = (vD * Twz(j,km1) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else if (vD < 0.) then
+            sd = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fD = (vD * Twz(j,k) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else
+            fD = 0.
+        end if
+
+        dX_advec(j,k) = dt_crcl * ( fA - fB - fC + fD )
+
+    end do
+
+    !< Right boundary
+    j=xdim
+    do k=2, ydim-3
+        km1=k-1; kp1=k+1; kp2=k+2; kp3=k+3; jm1=j-1; jp1=1; jp2=2; jp3=3
+
+        !< Slopes
+        sa = (Twz(j,k)-Twz(jm1,k)) / dx(k)
+        sb = (Twz(j,kp1)-Twz(j,k)) / dy
+        sc = (Twz(jp1,k)-Twz(j,k)) / dx(k)
+        sd = (Twz(j,k)-Twz(j,km1)) / dy
+
+        !< Mean winds on boundaries of cell
+        uA = ( uclim(jm1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vB = ( vclim(j,kp1,ityr)+vclim(j,k,ityr) ) / 2.
+        uC = ( uclim(jp1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vD = ( vclim(j,km1,ityr)+vclim(j,k,ityr) ) / 2.
+
+        !< Flux over cell coundaries
+        !< fA
+        if (uA > 0.) then
+            sa = minmod( (Twz(j,k)-Twz(jm1,k)) / dx(k), (Twz(jp1,k)-Twz(j,k)) / dx(k) )
+            fA = (uA * Twz(jm1,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else if (uA < 0.) then
+            sa = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fA = (uA * Twz(j,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else
+        fA = 0.
+        end if
+
+        !< fB
+        if (vB > 0.) then
+            sb = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fB = (vB * Twz(j,k) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else if (vB < 0.) then
+            sb = minmod( (Twz(j,kp2)-Twz(j,kp1)) / dy, (Twz(j,kp3)-Twz(j,kp2)) / dy )
+            fB = (vB * Twz(j,kp1) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else
+        fB = 0.
+        end if
+
+        !< fC
+        if (uC > 0.) then
+            sc = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fC = (uC * Twz(j,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else if (uC < 0.) then
+            sc = minmod( (Twz(jp2,k)-Twz(jp1,k)) / dx(k), (Twz(jp3,k)-Twz(jp2,k)) / dx(k) )
+            fC = (uC * Twz(jp1,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else
+            fC = 0.
+        end if
+
+        !< fD
+        if (vD > 0.) then
+            sd = minmod( (Twz(j,k)-Twz(j,km1)) / dy, (Twz(j,kp1)-Twz(j,k)) / dy )
+            fD = (vD * Twz(j,km1) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else if (vD < 0.) then
+            sd = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fD = (vD * Twz(j,k) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else
+            fD = 0.
+        end if
+
+        dX_advec(j,k) = dt_crcl * ( fA - fB - fC + fD )
+
+    end do
+
+    j=xdim-1
+    do k=2, ydim-3
+        km1=k-1; kp1=k+1; kp2=k+2; kp3=k+3; jm1=j-1; jp1=j+1; jp2=1; jp3=2
+
+        !< Slopes
+        sa = (Twz(j,k)-Twz(jm1,k)) / dx(k)
+        sb = (Twz(j,kp1)-Twz(j,k)) / dy
+        sc = (Twz(jp1,k)-Twz(j,k)) / dx(k)
+        sd = (Twz(j,k)-Twz(j,km1)) / dy
+
+        !< Mean winds on boundaries of cell
+        uA = ( uclim(jm1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vB = ( vclim(j,kp1,ityr)+vclim(j,k,ityr) ) / 2.
+        uC = ( uclim(jp1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vD = ( vclim(j,km1,ityr)+vclim(j,k,ityr) ) / 2.
+
+        !< Flux over cell coundaries
+        !< fA
+        if (uA > 0.) then
+            sa = minmod( (Twz(j,k)-Twz(jm1,k)) / dx(k), (Twz(jp1,k)-Twz(j,k)) / dx(k) )
+            fA = (uA * Twz(jm1,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else if (uA < 0.) then
+            sa = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fA = (uA * Twz(j,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else
+            fA = 0.
+        end if
+
+        !< fB
+        if (vB > 0.) then
+            sb = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fB = (vB * Twz(j,k) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else if (vB < 0.) then
+            sb = minmod( (Twz(j,kp2)-Twz(j,kp1)) / dy, (Twz(j,kp3)-Twz(j,kp2)) / dy )
+            fB = (vB * Twz(j,kp1) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else
+            fB = 0.
+        end if
+
+        !< fC
+        if (uC > 0.) then
+            sc = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fC = (uC * Twz(j,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else if (uC < 0.) then
+            sc = minmod( (Twz(jp2,k)-Twz(jp1,k)) / dx(k), (Twz(jp3,k)-Twz(jp2,k)) / dx(k) )
+            fC = (uC * Twz(jp1,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else
+            fC = 0.
+        end if
+
+        !< fD
+        if (vD > 0.) then
+            sd = minmod( (Twz(j,k)-Twz(j,km1)) / dy, (Twz(j,kp1)-Twz(j,k)) / dy )
+            fD = (vD * Twz(j,km1) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else if (vD < 0.) then
+            sd = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fD = (vD * Twz(j,k) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else
+            fD = 0.
+        end if
+
+        dX_advec(j,k) = dt_crcl * ( fA - fB - fC + fD )
+
+    end do
+
+    j=xdim-2
+    do k=2, ydim-3
+        km1=k-1; kp1=k+1; kp2=k+2; kp3=k+3; jm1=j-1; jp1=j+1; jp2=j+2; jp3=1
+
+        !< Slopes
+        sa = (Twz(j,k)-Twz(jm1,k)) / dx(k)
+        sb = (Twz(j,kp1)-Twz(j,k)) / dy
+        sc = (Twz(jp1,k)-Twz(j,k)) / dx(k)
+        sd = (Twz(j,k)-Twz(j,km1)) / dy
+
+        !< Mean winds on boundaries of cell
+        uA = ( uclim(jm1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vB = ( vclim(j,kp1,ityr)+vclim(j,k,ityr) ) / 2.
+        uC = ( uclim(jp1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vD = ( vclim(j,km1,ityr)+vclim(j,k,ityr) ) / 2.
+
+        !< Flux over cell coundaries
+        !< fA
+        if (uA > 0.) then
+            sa = minmod( (Twz(j,k)-Twz(jm1,k)) / dx(k), (Twz(jp1,k)-Twz(j,k)) / dx(k) )
+            fA = (uA * Twz(jm1,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else if (uA < 0.) then
+            sa = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fA = (uA * Twz(j,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else
+            fA = 0.
+        end if
+
+        !< fB
+        if (vB > 0.) then
+            sb = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fB = (vB * Twz(j,k) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else if (vB < 0.) then
+            sb = minmod( (Twz(j,kp2)-Twz(j,kp1)) / dy, (Twz(j,kp3)-Twz(j,kp2)) / dy )
+            fB = (vB * Twz(j,kp1) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else
+            fB = 0.
+        end if
+
+        !< fC
+        if (uC > 0.) then
+            sc = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fC = (uC * Twz(j,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else if (uC < 0.) then
+            sc = minmod( (Twz(jp2,k)-Twz(jp1,k)) / dx(k), (Twz(jp3,k)-Twz(jp2,k)) / dx(k) )
+            fC = (uC * Twz(jp1,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else
+            fC = 0.
+        end if
+
+        !< fD
+        if (vD > 0.) then
+            sd = minmod( (Twz(j,k)-Twz(j,km1)) / dy, (Twz(j,kp1)-Twz(j,k)) / dy )
+            fD = (vD * Twz(j,km1) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else if (vD < 0.) then
+            sd = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fD = (vD * Twz(j,k) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else
+            fD = 0.
+        end if
+
+        dX_advec(j,k) = dt_crcl * ( fA - fB - fC + fD )
+
+    end do
+
+    j=xdim-3
+    do k=2, ydim-3
+        km1=k-1; kp1=k+1; kp2=k+2; kp3=k+3; jm1=j-1; jp1=j+1; jp2=j+2; jp3=xdim
+
+        !< Slopes
+        sa = (Twz(j,k)-Twz(jm1,k)) / dx(k)
+        sb = (Twz(j,kp1)-Twz(j,k)) / dy
+        sc = (Twz(jp1,k)-Twz(j,k)) / dx(k)
+        sd = (Twz(j,k)-Twz(j,km1)) / dy
+
+        !< Mean winds on boundaries of cell
+        uA = ( uclim(jm1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vB = ( vclim(j,kp1,ityr)+vclim(j,k,ityr) ) / 2.
+        uC = ( uclim(jp1,k,ityr)+uclim(j,k,ityr) ) / 2.
+        vD = ( vclim(j,km1,ityr)+vclim(j,k,ityr) ) / 2.
+
+        !< Flux over cell coundaries
+        !< fA
+        if (uA > 0.) then
+            sa = minmod( (Twz(j,k)-Twz(jm1,k)) / dx(k), (Twz(jp1,k)-Twz(j,k)) / dx(k) )
+            fA = (uA * Twz(jm1,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else if (uA < 0.) then
+            sa = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fA = (uA * Twz(j,k) + 0.5*uA*sa*(dx(k) - uA*dt_crcl)) / dx(k)
+        else
+            fA = 0.
+        end if
+
+        !< fB
+        if (vB > 0.) then
+            sb = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fB = (vB * Twz(j,k) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else if (vB < 0.) then
+            sb = minmod( (Twz(j,kp2)-Twz(j,kp1)) / dy, (Twz(j,kp3)-Twz(j,kp2)) / dy )
+            fB = (vB * Twz(j,kp1) + 0.5*vB*sb*(dy - vB*dt_crcl)) / dy
+        else
+            fB = 0.
+        end if
+
+        !< fC
+        if (uC > 0.) then
+            sc = minmod( (Twz(jp1,k)-Twz(j,k)) / dx(k), (Twz(jp2,k)-Twz(jp1,k)) / dx(k) )
+            fC = (uC * Twz(j,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else if (uC < 0.) then
+            sc = minmod( (Twz(jp2,k)-Twz(jp1,k)) / dx(k), (Twz(jp3,k)-Twz(jp2,k)) / dx(k) )
+            fC = (uC * Twz(jp1,k) + 0.5*uC*sc*(dx(k) - uC*dt_crcl)) / dx(k)
+        else
+            fC = 0.
+        end if
+
+        !< fD
+        if (vD > 0.) then
+            sd = minmod( (Twz(j,k)-Twz(j,km1)) / dy, (Twz(j,kp1)-Twz(j,k)) / dy )
+            fD = (vD * Twz(j,km1) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else if (vD < 0.) then
+            sd = minmod( (Twz(j,kp1)-Twz(j,k)) / dy, (Twz(j,kp2)-Twz(j,kp1)) / dy )
+            fD = (vD * Twz(j,k) + 0.5*vD*sd*(dy - vD*dt_crcl)) / dy
+        else
+            fD = 0.
+        end if
+
+        dX_advec(j,k) = dt_crcl * ( fA - fB - fC + fD )
+
+    end do
+
+    contains
+        real function minmod(a, b)
+            real, intent(in)  :: a, b
+            !real, intent(out) :: minmod
+
+            if( abs(a) < abs(b) .AND. a*b > 0. ) then
+                minmod = a
+            else if ( abs(a) > abs(b) .AND. a*b > 0. ) then
+                minmod = b
+            else
+                minmod = 0.
+            end if
+
+        end function minmod
+
+end subroutine advection_finite_volume_pwl_slimit
 
 !+++++++++++++++++++++++++++++++++++++++
 subroutine forcing(it, year, CO2, Tsurf)

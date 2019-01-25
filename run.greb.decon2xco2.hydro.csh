@@ -34,6 +34,7 @@ set LOG_EVA        = ${12} # 0=no-eva;   1=greb-eva;      2=forced-eva;       3=
 set LOG_OMEGA_EXT  = ${13} # 0=no-omega; 1=??? ;          2=forced-omega;     3=PI-not-responding
 set LOG_OMEGASTD_EXT  = ${14} # 0=no-omegastd; 1=??? ;    2=forced-omega_std; 3=PI-not-responding
 set LOG_HWIND_EXT  = ${15} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl;      3=PI-not-responding
+set LOG_CONV       = ${16} # 0=omega_conv_param; 1=finite volume advection
 set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf;     3=PI-not-responding
 
 # length of sensitivity experiment in years
@@ -57,7 +58,7 @@ setenv KMP_AFFINITY verbose,none
 
 set SCENARIO='climatechange'
 set NUMBER=${LOG_OCEAN}${LOG_VADV}${LOG_VDIF}${LOG_HYDRO}${LOG_ICE}${LOG_HADV}${LOG_HDIF}${LOG_HUMID}${LOG_CLOUD}${LOG_TOPO}
-set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_OMEGASTD_EXT}${LOG_HWIND_EXT}
+set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_OMEGASTD_EXT}${LOG_HWIND_EXT}${LOG_CONV}
 set FILENAME=${NUMBER}HYDRO${HYDRO_NUMBER}.${SCENARIO}
 echo 'EXPERIMENT: '${FILENAME}
 
@@ -87,6 +88,8 @@ log_hdif   	= $LOG_HDIF
 log_hadv   	= $LOG_HADV
 log_vdif   	= $LOG_VDIF
 log_vadv   	= $LOG_VADV
+
+log_conv    = $LOG_CONV
 
 log_eva     = $LOG_EVA
 log_tsurf_ext = $LOG_TSURF_EXT
