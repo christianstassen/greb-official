@@ -36,6 +36,7 @@ if ( log_clim .eq. 0 ) then ! ERA-Interim
   open(21,file='../input/solar_radiation.clim.bin', 		ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*ydim*nstep_yr)
   open(22,file='../input/erainterim.windspeed.850hpa.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(23,file='../input/erainterim.omega.vertmean.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  !open(23,file='../input/erainterim.omega.vertmean.nomean.clim.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(24,file='../input/erainterim.omega_std.vertmean.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(25,file='../input/erainterim.evaporation.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
 else if ( log_clim .eq. 1 ) then ! NCEP
@@ -73,10 +74,10 @@ end do
 
 !Subtract the annual field mean
 print*, SUM(omegaclim)/SIZE(omegaclim)
-do n=1,nstep_yr
-   if (log_omega_ext .gt. 1) omegaclim(:,:,n) = omegaclim(:,:,n) - SUM(omegaclim(:,:,n))/SIZE(omegaclim(:,:,n))
-end do
-print*, SUM(omegaclim)/SIZE(omegaclim)
+! do n=1,nstep_yr
+!    if (log_omega_ext .gt. 1) omegaclim(:,:,n) = omegaclim(:,:,n) - SUM(omegaclim(:,:,n))/SIZE(omegaclim(:,:,n))
+! end do
+! print*, SUM(omegaclim)/SIZE(omegaclim)
 
 ! read fix data
 read(19,rec=1)  z_topo
@@ -103,6 +104,7 @@ if ( log_exp .eq. 230 ) then
   open(33,file='../input/cmip5.meridional.wind.rcp85.ensmean.forcing.new.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.new.bin', &
+  !open(34,file='../input/cmip5.omega.rcp85.ensmean.forcing.nomean.new.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(35,file='../input/cmip5.omegastd.rcp85.ensmean.forcing.new.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED',RECL=ireal*xdim*ydim)
@@ -119,8 +121,17 @@ if ( log_exp .eq. 230 ) then
     if (log_hwind_ext .eq. 2) read(36,rec=i) wsclim_anom_cc(:,:,i)
     if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
   end do
-  if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.02 * SUM(Tclim_anom_cc)/SIZE(Tclim_anom_cc)
+  if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.014 * SUM(Tclim_anom_cc)/SIZE(Tclim_anom_cc)
   dqeva_anom_cc = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
+
+  !Subtract the annual field mean
+  print*, SUM(omegaclim_anom_cc)/SIZE(omegaclim_anom_cc)
+  ! do n=1,nstep_yr
+  !    if (log_omega_ext .gt. 1) omegaclim_anom_cc(:,:,n) = omegaclim_anom_cc(:,:,n) - &
+  !    & SUM(omegaclim_anom_cc(:,:,n))/SIZE(omegaclim_anom_cc(:,:,n))
+  ! end do
+  ! print*, SUM(omegaclim_anom_cc)/SIZE(omegaclim_anom_cc)
+
 end if
 
 ! ENSO forcing
