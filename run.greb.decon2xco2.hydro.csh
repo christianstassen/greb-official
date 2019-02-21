@@ -37,8 +37,10 @@ set LOG_HWIND_EXT  = ${15} # 0 and 1 set in LOG_DIFF/ADV; 2=forced-crcl;      3=
 set LOG_CONV       = ${16} # 0=omega_conv_param; 1=finite volume advection
 set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf;     3=PI-not-responding
 
+set LOG_RAIN = ${17}
+
 # length of sensitivity experiment in years
-set YEARS=50
+set YEARS=25
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
@@ -58,7 +60,7 @@ setenv KMP_AFFINITY verbose,none
 
 set SCENARIO='climatechange'
 set NUMBER=${LOG_OCEAN}${LOG_VADV}${LOG_VDIF}${LOG_HYDRO}${LOG_ICE}${LOG_HADV}${LOG_HDIF}${LOG_HUMID}${LOG_CLOUD}${LOG_TOPO}
-set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_OMEGASTD_EXT}${LOG_HWIND_EXT}${LOG_CONV}
+set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_OMEGASTD_EXT}${LOG_HWIND_EXT}${LOG_CONV}${LOG_RAIN}
 set FILENAME=${NUMBER}HYDRO${HYDRO_NUMBER}.${SCENARIO}
 echo 'EXPERIMENT: '${FILENAME}
 
@@ -90,6 +92,7 @@ log_vdif   	= $LOG_VDIF
 log_vadv   	= $LOG_VADV
 
 log_conv    = $LOG_CONV
+log_rain    = $LOG_RAIN
 
 log_eva     = $LOG_EVA
 log_tsurf_ext = $LOG_TSURF_EXT
@@ -121,7 +124,7 @@ undef 9.e27
 xdef  96 linear 0 3.75
 ydef  48 linear -88.125 3.75
 tdef 12 linear 15jan0  1mo
-vars 8
+vars 12
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
@@ -130,6 +133,10 @@ ice    1 0 ice
 precip 1 0 precip
 eva 1 0 eva
 qcrcl 1 0 qcrcl
+precip_q 1 0 precip_q
+precip_rq 1 0 precip_rq
+precip_w 1 0 precip_w
+precip_wstd 1 0 precip_wstd
 endvars
 EOF
 
@@ -140,7 +147,7 @@ undef 9.e27
 xdef  96 linear 0 3.75
 ydef  48 linear -88.125 3.75
 tdef $MONTHS linear 15jan0  1mo
-vars 8
+vars 12
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
@@ -149,6 +156,10 @@ ice    1 0 ice
 precip 1 0 precip
 eva 1 0 eva
 qcrcl 1 0 qcrcl
+precip_q 1 0 precip_q
+precip_rq 1 0 precip_rq
+precip_w 1 0 precip_w
+precip_wstd 1 0 precip_wstd
 endvars
 EOF
 
@@ -159,7 +170,7 @@ xdef 12 linear 0 3.75
 ydef  1 linear -88.125 3.75
 zdef  $YEARS linear 1 1
 tdef  1 linear 15jan0  1yr
-vars 8
+vars 12
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
@@ -168,6 +179,10 @@ ice    1 0 ice
 precip 1 0 precip
 eva 1 0 eva
 qcrcl 1 0 qcrcl
+precip_q 1 0 precip_q
+precip_rq 1 0 precip_rq
+precip_w 1 0 precip_w
+precip_wstd 1 0 precip_wstd
 endvars
 EOF
 
