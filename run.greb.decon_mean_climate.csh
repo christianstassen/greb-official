@@ -1,7 +1,7 @@
-#!/bin/csh 
-# 
-# run script for deconstruct mean climate experiments with the Globally Resolved Energy Balance (GREB) Model 
-# 
+#!/bin/csh
+#
+# run script for deconstruct mean climate experiments with the Globally Resolved Energy Balance (GREB) Model
+#
 # author: Tobias Bayr and Dietmar Dommenget
 
 # create work directory if does not already exist
@@ -18,7 +18,7 @@ if (-d work ) rm -f work/*
 
 # switches to turn on (1) or off (0) the different processes
 # see mscm.dkrz.de => deconstruct 2xco2 response for details
-set LOG_ICE   = 1	# ice 
+set LOG_ICE   = 1	# ice
 set LOG_CLOUD = 1	# clouds
 set LOG_OCEAN = 1	# ocean
 set LOG_ATMOS = 1	# atmosphere
@@ -32,11 +32,12 @@ set LOG_QFLUX = 1	# model correction
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
-gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+#gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### ifortran compiler (Mac)
-# ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x 
+# ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### g95 compiler (other Linux)
-# g95 greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x 
+# g95 greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 
 ###################
 # END USER INPUT! #
@@ -49,7 +50,7 @@ set SCENARIO='greb.mean.decon.exp-'
 set NUMBER=${LOG_QFLUX}${LOG_ICE}${LOG_CLOUD}${LOG_VADV}${LOG_VDIF}${LOG_HYDRO}${LOG_OCEAN}${LOG_CO2}${LOG_HADV}${LOG_HDIF}${LOG_ATMOS}
 set FILENAME=${SCENARIO}${NUMBER}
 echo 'EXPERIMENT: '${FILENAME}
-    
+
 # move complied files to work directory
 mv greb.x work/.
 mv *.mod work/.

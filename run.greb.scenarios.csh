@@ -1,8 +1,8 @@
-#!/bin/csh 
-# 
-# run script for scenario experiments with the Globally Resolved Energy Balance (GREB) Model 
-# 
-# author: Tobias Bayr and Dietmar Dommenget 
+#!/bin/csh
+#
+# run script for scenario experiments with the Globally Resolved Energy Balance (GREB) Model
+#
+# author: Tobias Bayr and Dietmar Dommenget
 
 # create work directory if does not already exist
 if (! -d work ) mkdir work
@@ -29,7 +29,7 @@ if (-d work ) rm -f work/*
 #  EXP = 32  paleo CO2=200ppm 231 kyr BP 		[ 50 years]
 #
 #  EXP = 35  solar radiation obliquity changes		[ 50 years]
-#  EXP = 36  solar radiation eccentricity changes	[ 50 years] 
+#  EXP = 36  solar radiation eccentricity changes	[ 50 years]
 #  EXP = 37  solar radiation radius changes		[ 50 years]
 #
 #  EXP = 40  partial 2xCO2 Northern hemisphere 		[ 50 years]
@@ -49,21 +49,30 @@ if (-d work ) rm -f work/*
 #
 #  EXP = 100 run model with your own CO2 scenario
 #
-# 
+#
+#  EXP = 230 run a climate change experiment with forced boundary conditions
+#            (surface temperature, hodrizontal winds and omega) of the CMIP5
+#            rcp85 ensemble mean response
+#
+#  EXP = 240 & 241 run a El Nino (La Nina) experiment with forced boundary conditions
+#            (surface temperature, hodrizontal winds and omega) of the ERA-Interim
+#            composite mean response
+#
+#
 # some general remarks to the sensitivity experiments:
-# - all scenarios will start in 1950 
-# - EXP 20-24 are abrupt climate change experiment, that will reach 
+# - all scenarios will start in 1950
+# - EXP 20-24 are abrupt climate change experiment, that will reach
 #   the new equilibrium climate after ~50 years
 # - EXP 26 is a climate change experiment with two abrupt changes
-# - EXP 25,28 are climate change experiments where the boundary conditions 
+# - EXP 25,28 are climate change experiments where the boundary conditions
 #   change contiously
-# - EXP 27 the incoming solar rediation is increased 
+# - EXP 27 the incoming solar rediation is increased
 # - EXP 30-32 are paleo experiment with boundary conditions 231 kyr before present
 # - EXP 35-37 are experiments with changed orbital parameters
 # - EXP 40-47 are experiments where CO2 is doubled in parts of the globe or seasons
-# - EXP 95-99 are IPCC scenarios, where the CO2 data is available 
+# - EXP 95-99 are IPCC scenarios, where the CO2 data is available
 #   for the years given in brackets from 1950 onward
-# - EXP 100: you can run the model with your own CO2 forcing, 
+# - EXP 100: you can run the model with your own CO2 forcing,
 #   which should be in the format [year co2] like for the IPCC scenarios
 #   and variable "FILENAME" below should be the same name as your CO2 forcing file, but without '.txt'
 
@@ -78,11 +87,11 @@ set EXP=20
 # length of sensitivity experiment in years
 set YEARS=50
 
-# for EXP = 35 choose here a value between -250 and 900 (with an increment of 25) for the obliquity: 
-# => possible range: [-250 (= -25deg),  900 (= +90deg)], todays value 225 (=22.5deg) 
+# for EXP = 35 choose here a value between -250 and 900 (with an increment of 25) for the obliquity:
+# => possible range: [-250 (= -25deg),  900 (= +90deg)], todays value 225 (=22.5deg)
 set OBL=0
 
-# for EXP = 36 choose here a value between -30 and 30 (with an increment of 1) for the eccentricity: 
+# for EXP = 36 choose here a value between -30 and 30 (with an increment of 1) for the eccentricity:
 # => possible range: [-30 (= -0.3), 30 (= +0.3)], todays value ~2 (=0.02)
 set ECC=0
 
@@ -95,12 +104,13 @@ set CO2input=none
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
-gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+#gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### ifortran compiler (Mac)
-# ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x 
+# ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### g95 compiler (other Linux)
-# g95 greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x 
- 
+# g95 greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+
 
 ###################
 # END USER INPUT! #
@@ -229,5 +239,5 @@ vapor  $YEARS 0 data 1
 ice    $YEARS 0 data 1
 endvars
 EOF
- 
+
 exit

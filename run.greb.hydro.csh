@@ -83,13 +83,13 @@ if (-d work ) rm -f work/*
 
 # settings for scenario
 # scenario number from list above
-set EXP=$4
+set EXP=230
 
 # if scenario is forced climate change (EXP 230) or forced ENSO (EXP 240 or 241)
 # a deconstruction can be done similar to deconstrct 2xCO2 (see Stassen et. al 2018 submitted to GMD)
-set log_tsurf_ext=$1 #force surface temperature with external file (0=no forcing; 1=forcing)
-set log_hwind_ext=$2 #force horizontal winds with external file (0=no forcing; 1=forcing)
-set log_omega_ext=$3 #force vertical velocity omega with external file (0=no forcing; 1=forcing)
+set log_tsurf_ext=1 #force surface temperature with external file (0=no forcing; 1=forcing)
+set log_hwind_ext=1 #force horizontal winds with external file (0=no forcing; 1=forcing)
+set log_omega_ext=1 #force vertical velocity omega with external file (0=no forcing; 1=forcing)
 
 # length of sensitivity experiment in years
 set YEARS=5
@@ -112,6 +112,7 @@ set CO2input=none
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
 # gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+#gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### ifortran compiler (Mac)
 # ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x

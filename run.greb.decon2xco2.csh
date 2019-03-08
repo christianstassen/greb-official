@@ -1,7 +1,7 @@
-#!/bin/csh 
-# 
-# run script for deconstruct 2xCO2 experiments with the Globally Resolved Energy Balance (GREB) Model 
-# 
+#!/bin/csh
+#
+# run script for deconstruct 2xCO2 experiments with the Globally Resolved Energy Balance (GREB) Model
+#
 # author: Tobias Bayr and Dietmar Dommenget
 
 # create work directory if does not already exist
@@ -32,11 +32,12 @@ set LOG_VADV  = 1	# vapour advection
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
-gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+#gfortran -fopenmp -march=native -O3 -ffast-math -funroll-loops greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
+gfortran -Ofast -ffast-math -funroll-loops -fopenmp greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### ifortran compiler (Mac)
-# ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x 
+# ifort -assume byterecl -O3 -xhost -align all -fno-alias greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 ### g95 compiler (other Linux)
-# g95 greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x 
+# g95 greb.model.mscm.f90 greb.shell.mscm.f90 -o greb.x
 
 ###################
 # END USER INPUT! #
@@ -49,7 +50,7 @@ set SCENARIO='2xCO2'
 set NUMBER=${LOG_OCEAN}${LOG_VADV}${LOG_VDIF}${LOG_HYDRO}${LOG_ICE}${LOG_HADV}${LOG_HDIF}${LOG_HUMID}${LOG_CLOUD}${LOG_TOPO}
 set FILENAME=${NUMBER}.${SCENARIO}
 echo 'EXPERIMENT: '${FILENAME}
-    
+
 # move complied files to work directory
 mv greb.x work/.
 mv *.mod work/.
@@ -122,5 +123,5 @@ vapor  50 0 data 1
 ice    50 0 data 1
 endvars
 EOF
- 
+
 exit

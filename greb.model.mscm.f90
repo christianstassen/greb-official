@@ -10,13 +10,14 @@
 !               by Dietmar Dommenget and Janine Flöter, J. Clim Dyn (2011) 37: 2143.
 !               doi:10.1007/s00382-011-1026-0
 
-!               - A Hydrological Cycle Model for the Globally Resolved Energy Balance Model (GREB)
-!               by Christian Stassen, Dietmar Dommenget & Nicholas Loveday. Submitted to GMD in 2018
+!               - A hydrological cycle model for the Globally Resolved Energy Balance (GREB) model v1.0
+!               by Christian Stassen, Dietmar Dommenget & Nicholas Loveday.
+!               Geosci. Model Dev., 12, 425-440, https://doi.org/10.5194/gmd-12-425-2019, 2019.
 !
-!		The Monash Simple Climate Model Experiments: An interactive database
-!		of the mean climate, climate change and scenarios simulations
-!		by Dietmar Dommenget, Kerry Nice, Tobias Bayr, Dieter Kasang, Christian Stassen
-!		and Mike Rezny, submitted to Geoscientific Model Development
+!		            - The Monash Simple Climate Model Experiments: An interactive database
+!		            of the mean climate, climate change and scenarios simulations
+!		            by Dietmar Dommenget, Kerry Nice, Tobias Bayr, Dieter Kasang, Christian Stassen
+!		            and Mike Rezny, submitted to Geoscientific Model Development
 !
 !
 !  input fields: The GREB model needs the following fields to be specified before
@@ -78,6 +79,14 @@
 !  log_exp = 97  IPCC RCP45 scenario
 !  log_exp = 98  IPCC RCP60 scenario
 !  log_exp = 99  IPCC RCP85 scenario
+!
+!  log_exp = 230 run a climate change experiment with forced boundary conditions
+!            (surface temperature, hodrizontal winds and omega) of the CMIP5
+!            rcp85 ensemble mean response
+!
+!  log_exp = 240 & 241 run a El Nino (La Nina) experiment with forced boundary conditions
+!            (surface temperature, hodrizontal winds and omega) of the ERA-Interim
+!            composite mean response
 !
 !  log_exp = 100 run model with your own CO2 input file
 !
@@ -405,7 +414,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      rS0 = (1/radius)**2
      sw_solar = rS0*sw_solar
   end if
-  if ( log_exp .eq. 230 ) then ! change boundary conditions for ENSO forcing
+  if ( log_exp .eq. 230 ) then ! change boundary conditions for Climate Change forcing
      Tclim      = Tclim + Tclim_anom_cc
      uclim      = uclim + uclim_anom_cc
      vclim      = vclim + vclim_anom_cc
@@ -739,7 +748,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 ! change in water vapor
   dq_eva  = -Qlat/cq_latent/r_qviwv  ! evaporation
 
-! Eq. 8 (a-e) in Stassen & Dommenget 2018
+! precipitation -> Eq. 11 in Stassen et al 2019
 ! Parameters in unused terms are set to zero
   dq_rain = (c_q + c_rq*rq + c_omega*omegaclim(:,:,ityr) + c_omegastd*omegastdclim(:,:,ityr))*cq_rain*q
   where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
@@ -1227,7 +1236,7 @@ end subroutine advection
 subroutine convergence(T1, div)
 !+++++++++++++++++++++++++++++++++++++++
 ! Calculates divergence (convergence) of a given field (i.e. spec. hum.) when omega is known
-! Eq. 14 in Stassen & Dommenget 2018
+! Eq. 18 in Stassen et al 2019
   use mo_numerics, only: xdim, ydim, nstep_yr, dlon, dlat, dt_crcl
   use mo_physics,  only: ityr, rho_air, grav, pi, z_vapor, omegaclim
   implicit none
