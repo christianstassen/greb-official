@@ -1,7 +1,6 @@
 
 .DS_Store
-*.bin
-*.ctl
 *.nc
 *.mod
 work/
+output/*
