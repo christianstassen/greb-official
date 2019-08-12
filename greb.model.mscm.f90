@@ -204,7 +204,7 @@ module mo_physics
 ! declare climate fields
   real, dimension(xdim,ydim)          ::  z_topo, glacier,z_ocean
   real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim=0., omegastdclim=0., wsclim
-  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevaclim
+  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevaclim, dqprecipclim
   real, dimension(xdim,ydim,nstep_yr) ::  TF_correct, qF_correct, ToF_correct, swetclim, dTrad
   real, dimension(ydim,nstep_yr)      ::  sw_solar, sw_solar_ctrl, sw_solar_scnr
   real, dimension(xdim,ydim)          ::  co2_part      = 1.0
@@ -223,6 +223,7 @@ module mo_physics
   real, dimension(xdim,ydim,nstep_yr) ::   omegastdclim_anom_cc   = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   wsclim_anom_cc      = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   dqeva_anom_cc      = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   dqprecip_anom_cc      = 0.
 
 ! declare constant fields
   real, dimension(xdim,ydim)          ::  cap_surf
@@ -253,13 +254,13 @@ module mo_diagnostics
   USE mo_numerics,    ONLY: xdim, ydim
 
  ! declare diagnostic fields
-  real, dimension(xdim,ydim)          :: Tsmn, Tamn, qmn, swmn, lwmn, qlatmn, qsensmn, &
+  real, dimension(xdim,ydim)          :: Tsmn, Tamn, qmn, rqmn, swmn, lwmn, qlatmn, qsensmn, &
 &                                        ftmn, fqmn, icmn, Tomn
 
 ! declare output fields
-  real, dimension(xdim,ydim)          :: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm, qcrclmm
+  real, dimension(xdim,ydim)          :: Tmm, Tamm, Tomm, qmm, rqmm, icmm, prmm, evamm, qcrclmm
   real, dimension(xdim,ydim,12)       :: Tmn_ctrl, Tamn_ctrl, Tomn_ctrl
-  real, dimension(xdim,ydim,12)       :: qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl, qcrclmn_ctrl
+  real, dimension(xdim,ydim,12)       :: qmn_ctrl, rqmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl, qcrclmn_ctrl
 
   real, dimension(xdim,ydim)          :: dq_rain_qmm, dq_rain_rqmm, dq_rain_wmm, dq_rain_wstdmm
   real, dimension(xdim,ydim,12)       :: dq_rain_qmm_ctrl, dq_rain_rqmm_ctrl, dq_rain_wmm_ctrl, dq_rain_wstdmm_ctrl
@@ -454,15 +455,6 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
   Ts1 = Ts_ini; Ta1 = Ta_ini; q1 = q_ini; To1 = To_ini                     ! initialize fields
   year=1950.; CO2=340.0; mon=1; irec=0; Tmm=0.; Tamm=0.; qmm=0.; apmm=0.;
   if (log_exp .ge. 35 .and. log_exp .le. 37) year=1.
-
-! where( omegaclim > 0. )
-!   omegaclim = omegaclim * 0.9
-! elsewhere (omegaclim < 0. )
-!   omegaclim = omegaclim * 1.1
-! end where
-! do n=1,nstep_yr
-!   omegaclim(:,:,n) = omegaclim(:,:,n) - SUM(omegaclim(:,:,n))/SIZE(omegaclim(:,:,n))
-! end do
 
   do it=1, time_scnr*nstep_yr                                              ! main time loop
      call forcing(it, year, CO2, Ts1)
@@ -731,7 +723,8 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
 &                           ce, cq_latent, cq_rain, z_air, r_qviwv, log_exp, &
 &                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp,    &
 &                           omegaclim, omegastdclim, wsclim,  wz_vapor,      &
-&                           c_q, c_rq, c_omega, c_omegastd, log_eva, dqevaclim                   ! Rainfall parameters
+&                           c_q, c_rq, c_omega, c_omegastd, log_eva, log_rain, &
+&                           dqevaclim, dqprecipclim
 
 ! declare temporary fields
   real, dimension(xdim,ydim)  :: Tsurf, Tskin, q, Qlat, Qlat_air, qs, dq_eva, &
@@ -801,6 +794,17 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
   dq_rain      = dq_rain_q + dq_rain_rq + dq_rain_w + dq_rain_wstd
   !where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
   where(dq_rain >= 0. ) dq_rain = 0.  !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
+
+! Forced precipitation
+  if (log_rain == 5) then
+    dq_rain(:,:) = dqprecipclim(:,:,ityr)
+    !print*, dq_rain(48,26)
+
+    dq_rain_q(:,:)    = 0.
+    dq_rain_rq(:,:)   = 0.
+    dq_rain_w(:,:)    = 0.
+    dq_rain_wstd(:,:) = 0.
+  end if
 
 ! latent heat flux atmos
   Qlat_air = -dq_rain*cq_latent*r_qviwv
@@ -1845,12 +1849,12 @@ subroutine forcing(it, year, CO2, Tsurf)
 
 ! IPCC RCP scenarios
   if( log_exp .ge. 96 .and. log_exp .le. 99 ) then ! IPCC RCP scenarios
-      if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
+      if(mod(it,nstep_yr) .eq. 1) read (28,*) t, CO2
   end if
 
 ! own CO2 scenario
   if( log_exp .eq. 100 ) then
-      if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
+      if(mod(it,nstep_yr) .eq. 1) read (28,*) t, CO2
   end if
 
 ! Forced Climate Change run
@@ -1905,20 +1909,27 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
 
   USE mo_numerics,     ONLY: xdim, ydim, jday_mon, ndt_days, nstep_yr, time_scnr &
 &                          , time_ctrl, ireal, dt
-  USE mo_physics,      ONLY: jday, log_exp, r_qviwv, wz_vapor
-  use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, icmm, prmm, evamm, qcrclmm &
-&                          , Tmn_ctrl, Tamn_ctrl, Tomn_ctrl, qmn_ctrl, icmn_ctrl, prmn_ctrl, evamn_ctrl, qcrclmn_ctrl, &
-&                            dq_rain_qmm, dq_rain_rqmm, dq_rain_wmm, dq_rain_wstdmm, &
+  USE mo_physics,      ONLY: jday, log_exp, r_qviwv, wz_vapor, z_topo, z_air
+  use mo_diagnostics,  ONLY: Tmm, Tamm, Tomm, qmm, rqmm, icmm, prmm, evamm, qcrclmm &
+&                          , Tmn_ctrl, Tamn_ctrl, Tomn_ctrl, qmn_ctrl, rqmn_ctrl, icmn_ctrl, prmn_ctrl, &
+&                            evamn_ctrl, qcrclmn_ctrl, dq_rain_qmm, dq_rain_rqmm, dq_rain_wmm, dq_rain_wstdmm, &
 &                            dq_rain_qmm_ctrl, dq_rain_rqmm_ctrl, dq_rain_wmm_ctrl, dq_rain_wstdmm_ctrl
 
   ! declare temporary fields
-  real, dimension(xdim,ydim)  :: Ts0, Ta0, To0, q0, ice_cover, dq_rain, dq_eva, dq_crcl, &
+  real, dimension(xdim,ydim)  :: Ts0, Ta0, To0, q0, rq, qs, ice_cover, dq_rain, dq_eva, dq_crcl, &
 &                                dq_rain_q, dq_rain_rq, dq_rain_w, dq_rain_wstd
 
   integer, save :: irec_extra=0
 
+
+  ! relative humidity
+  ! saturated humiditiy (max. air water vapor)
+  qs = 3.75e-3*exp(17.08085*(Ts0-273.15)/(Ts0-273.15+234.175));
+  qs = qs*exp(-z_topo/z_air) ! scale qs by topography
+  rq = q0/qs
+
   ! diagnostics: monthly means
-  Tmm=Tmm+Ts0; Tamm=Tamm+ta0; Tomm=Tomm+to0; qmm=qmm+q0; icmm=icmm+ice_cover;
+  Tmm=Tmm+Ts0; Tamm=Tamm+ta0; Tomm=Tomm+to0; qmm=qmm+q0; rqmm=rqmm+rq; icmm=icmm+ice_cover;
   prmm=prmm+dq_rain*(r_qviwv*wz_vapor);          ! kg/m2/s
   evamm=evamm+dq_eva*(r_qviwv*wz_vapor);         ! kg/m2/s
   qcrclmm=qcrclmm+dq_crcl*(r_qviwv*wz_vapor)/dt; ! kg/m2/s
@@ -1929,15 +1940,15 @@ subroutine output(it, iunit, irec, mon, ts0, ta0, to0, q0, ice_cover, dq_rain, d
   dq_rain_wstdmm = dq_rain_wstdmm+ dq_rain_wstd*(r_qviwv*wz_vapor)! kg/m2/s
 
 ! Extra output every timestep
-irec_extra=irec_extra+1; write(999,rec=irec_extra) q0
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain*(r_qviwv*wz_vapor)
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_eva*(r_qviwv*wz_vapor)
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_crcl*(r_qviwv*wz_vapor)/dt
-
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_q*(r_qviwv*wz_vapor)   ! kg/m2/s
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_rq*(r_qviwv*wz_vapor)  ! kg/m2/s
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_w*(r_qviwv*wz_vapor)   ! kg/m2/s
-irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_wstd*(r_qviwv*wz_vapor)! kg/m2/s
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) q0
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain*(r_qviwv*wz_vapor)
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_eva*(r_qviwv*wz_vapor)
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_crcl*(r_qviwv*wz_vapor)/dt
+!
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_q*(r_qviwv*wz_vapor)   ! kg/m2/s
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_rq*(r_qviwv*wz_vapor)  ! kg/m2/s
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_w*(r_qviwv*wz_vapor)   ! kg/m2/s
+! irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_wstd*(r_qviwv*wz_vapor)! kg/m2/s
 
 ! control output
   if (       jday == sum(jday_mon(1:mon))                   &
@@ -1947,24 +1958,26 @@ irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_wstd*(r_qviwv*wz_vapo
      if (it/float(ndt_days)  > 365*(time_ctrl-1)) then
      !if (log_exp .eq. 1 .or. log_exp .eq. 230 ) then
      irec=irec+1;
-     write(iunit,rec=12*irec-11)  Tmm/ndm
-     write(iunit,rec=12*irec-10)  Tamm/ndm
-     write(iunit,rec=12*irec-9)  Tomm/ndm
-     write(iunit,rec=12*irec-8)   qmm/ndm
-     write(iunit,rec=12*irec-7)  icmm/ndm
-     write(iunit,rec=12*irec-6)  prmm/ndm
-     write(iunit,rec=12*irec-5) evamm/ndm
-     write(iunit,rec=12*irec-4) qcrclmm/ndm
+     write(iunit,rec=13*irec-12)  Tmm/ndm
+     write(iunit,rec=13*irec-11)  Tamm/ndm
+     write(iunit,rec=13*irec-10)  Tomm/ndm
+     write(iunit,rec=13*irec-9)   qmm/ndm
+     write(iunit,rec=13*irec-8)   rqmm/ndm
+     write(iunit,rec=13*irec-7)  icmm/ndm
+     write(iunit,rec=13*irec-6)  prmm/ndm
+     write(iunit,rec=13*irec-5) evamm/ndm
+     write(iunit,rec=13*irec-4) qcrclmm/ndm
 
-     write(iunit,rec=12*irec-3) dq_rain_qmm/ndm
-     write(iunit,rec=12*irec-2) dq_rain_rqmm/ndm
-     write(iunit,rec=12*irec-1) dq_rain_wmm/ndm
-     write(iunit,rec=12*irec) dq_rain_wstdmm/ndm
+     write(iunit,rec=13*irec-3) dq_rain_qmm/ndm
+     write(iunit,rec=13*irec-2) dq_rain_rqmm/ndm
+     write(iunit,rec=13*irec-1) dq_rain_wmm/ndm
+     write(iunit,rec=13*irec) dq_rain_wstdmm/ndm
      !else
      Tmn_ctrl(:,:,mon)     =   Tmm/ndm
      Tamn_ctrl(:,:,mon)    =  Tamm/ndm
      Tomn_ctrl(:,:,mon)    =  Tomm/ndm
      qmn_ctrl(:,:,mon)     =   qmm/ndm
+     rqmn_ctrl(:,:,mon)    =   rqmm/ndm
      icmn_ctrl(:,:,mon)    =  icmm/ndm
      prmn_ctrl(:,:,mon)    =  prmm/ndm
      evamn_ctrl(:,:,mon)   = evamm/ndm
@@ -1977,7 +1990,7 @@ irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_wstd*(r_qviwv*wz_vapo
 
      !end if
      end if
-     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
+     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.;  rqmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
      dq_rain_qmm=0.; dq_rain_rqmm=0.; dq_rain_wmm=0.; dq_rain_wstdmm=0.;
      mon=mon+1; if (mon==13) mon=1
   end if
@@ -1989,51 +2002,54 @@ irec_extra=irec_extra+1; write(999,rec=irec_extra) dq_rain_wstd*(r_qviwv*wz_vapo
      ndm=jday_mon(mon)*ndt_days
      irec=irec+1;
      if (log_exp .ge. 35 .and. log_exp .le. 37 ) then
-       write(iunit,rec=12*irec-11)  Tmm/ndm
-       write(iunit,rec=12*irec-10)  Tamm/ndm
-       write(iunit,rec=12*irec-9)  Tomm/ndm
-       write(iunit,rec=12*irec-8)   qmm/ndm
-       write(iunit,rec=12*irec-7)  icmm/ndm
-       write(iunit,rec=12*irec-6)  prmm/ndm
-       write(iunit,rec=12*irec-5) evamm/ndm
-       write(iunit,rec=12*irec-4) qcrclmm/ndm
+       write(iunit,rec=13*irec-12)  Tmm/ndm
+       write(iunit,rec=13*irec-11)  Tamm/ndm
+       write(iunit,rec=13*irec-10)  Tomm/ndm
+       write(iunit,rec=13*irec-9)   qmm/ndm
+       write(iunit,rec=13*irec-8)   rqmm/ndm
+       write(iunit,rec=13*irec-7)  icmm/ndm
+       write(iunit,rec=13*irec-6)  prmm/ndm
+       write(iunit,rec=13*irec-5) evamm/ndm
+       write(iunit,rec=13*irec-4) qcrclmm/ndm
 
-       write(iunit,rec=12*irec-3) dq_rain_qmm/ndm
-       write(iunit,rec=12*irec-2) dq_rain_rqmm/ndm
-       write(iunit,rec=12*irec-1) dq_rain_wmm/ndm
-       write(iunit,rec=12*irec) dq_rain_wstdmm/ndm
+       write(iunit,rec=13*irec-3) dq_rain_qmm/ndm
+       write(iunit,rec=13*irec-2) dq_rain_rqmm/ndm
+       write(iunit,rec=13*irec-1) dq_rain_wmm/ndm
+       write(iunit,rec=13*irec) dq_rain_wstdmm/ndm
 
      else
-     write(iunit,rec=12*irec-11)   Tmm/ndm  -Tmn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-10)  Tamm/ndm -Tamn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-9)  Tomm/ndm -Tomn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-8)   qmm/ndm -qmn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-7)  icmm/ndm -icmn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-6)  prmm/ndm -prmn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-5) evamm/ndm -evamn_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-4) qcrclmm/ndm -qcrclmn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-12)   Tmm/ndm  -Tmn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-11)  Tamm/ndm -Tamn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-10)  Tomm/ndm -Tomn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-9)   qmm/ndm -qmn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-8)   rqmm/ndm -rqmn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-7)  icmm/ndm -icmn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-6)  prmm/ndm -prmn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-5) evamm/ndm -evamn_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-4) qcrclmm/ndm -qcrclmn_ctrl(:,:,mon)
 
-     write(iunit,rec=12*irec-3) dq_rain_qmm/ndm -dq_rain_qmm_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-2) dq_rain_rqmm/ndm -dq_rain_rqmm_ctrl(:,:,mon)
-     write(iunit,rec=12*irec-1) dq_rain_wmm/ndm -dq_rain_wmm_ctrl(:,:,mon)
-     write(iunit,rec=12*irec) dq_rain_wstdmm/ndm -dq_rain_wstdmm_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-3) dq_rain_qmm/ndm -dq_rain_qmm_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-2) dq_rain_rqmm/ndm -dq_rain_rqmm_ctrl(:,:,mon)
+     write(iunit,rec=13*irec-1) dq_rain_wmm/ndm -dq_rain_wmm_ctrl(:,:,mon)
+     write(iunit,rec=13*irec) dq_rain_wstdmm/ndm -dq_rain_wstdmm_ctrl(:,:,mon)
 
      iyrec=floor(float((irec-1)/12))
-     write(103,rec=               12*iyrec+mon) gmean(Tmm/ndm  -Tmn_ctrl(:,:,mon))
-     write(103,rec=1*12*time_scnr+12*iyrec+mon) gmean(Tamm/ndm -Tamn_ctrl(:,:,mon))
-     write(103,rec=2*12*time_scnr+12*iyrec+mon) gmean(Tomm/ndm -Tomn_ctrl(:,:,mon))
-     write(103,rec=3*12*time_scnr+12*iyrec+mon) gmean(qmm/ndm -qmn_ctrl(:,:,mon))
-     write(103,rec=4*12*time_scnr+12*iyrec+mon) gmean(icmm/ndm -icmn_ctrl(:,:,mon))
-     write(103,rec=5*12*time_scnr+12*iyrec+mon) gmean(prmm/ndm -prmn_ctrl(:,:,mon))
-     write(103,rec=6*12*time_scnr+12*iyrec+mon) gmean(evamm/ndm -evamn_ctrl(:,:,mon))
-     write(103,rec=7*12*time_scnr+12*iyrec+mon) gmean(qcrclmm/ndm -qcrclmn_ctrl(:,:,mon))
+     write(103,rec=               13*iyrec+mon) gmean(Tmm/ndm  -Tmn_ctrl(:,:,mon))
+     write(103,rec=1*13*time_scnr+13*iyrec+mon) gmean(Tamm/ndm -Tamn_ctrl(:,:,mon))
+     write(103,rec=2*13*time_scnr+13*iyrec+mon) gmean(Tomm/ndm -Tomn_ctrl(:,:,mon))
+     write(103,rec=3*13*time_scnr+13*iyrec+mon) gmean(qmm/ndm -qmn_ctrl(:,:,mon))
+     write(103,rec=4*13*time_scnr+13*iyrec+mon) gmean(rqmm/ndm -rqmn_ctrl(:,:,mon))
+     write(103,rec=5*13*time_scnr+13*iyrec+mon) gmean(icmm/ndm -icmn_ctrl(:,:,mon))
+     write(103,rec=6*13*time_scnr+13*iyrec+mon) gmean(prmm/ndm -prmn_ctrl(:,:,mon))
+     write(103,rec=7*13*time_scnr+13*iyrec+mon) gmean(evamm/ndm -evamn_ctrl(:,:,mon))
+     write(103,rec=8*13*time_scnr+13*iyrec+mon) gmean(qcrclmm/ndm -qcrclmn_ctrl(:,:,mon))
 
-     write(103,rec=8*12*time_scnr+12*iyrec+mon) gmean(dq_rain_qmm/ndm -dq_rain_qmm_ctrl(:,:,mon))
-     write(103,rec=9*12*time_scnr+12*iyrec+mon) gmean(dq_rain_rqmm/ndm -dq_rain_rqmm_ctrl(:,:,mon))
-     write(103,rec=10*12*time_scnr+12*iyrec+mon) gmean(dq_rain_wmm/ndm -dq_rain_wmm_ctrl(:,:,mon))
-     write(103,rec=11*12*time_scnr+12*iyrec+mon) gmean(dq_rain_wstdmm/ndm -dq_rain_wstdmm_ctrl(:,:,mon))
+     write(103,rec=9*13*time_scnr+13*iyrec+mon) gmean(dq_rain_qmm/ndm -dq_rain_qmm_ctrl(:,:,mon))
+     write(103,rec=10*13*time_scnr+13*iyrec+mon) gmean(dq_rain_rqmm/ndm -dq_rain_rqmm_ctrl(:,:,mon))
+     write(103,rec=11*13*time_scnr+13*iyrec+mon) gmean(dq_rain_wmm/ndm -dq_rain_wmm_ctrl(:,:,mon))
+     write(103,rec=12*13*time_scnr+13*iyrec+mon) gmean(dq_rain_wstdmm/ndm -dq_rain_wstdmm_ctrl(:,:,mon))
      end if
-     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
+     Tmm=0.; Tamm=0.;Tomm=0.; qmm=0.; rqmm=0.; icmm=0.; prmm=0.; evamm=0.; qcrclmm=0.;
      dq_rain_qmm=0.; dq_rain_rqmm=0.; dq_rain_wmm=0.; dq_rain_wstdmm=0.;
      mon=mon+1; if (mon==13) mon=1
   end if

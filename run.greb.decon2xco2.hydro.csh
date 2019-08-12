@@ -124,11 +124,12 @@ undef 9.e27
 xdef  96 linear 0 3.75
 ydef  48 linear -88.125 3.75
 tdef 12 linear 15jan0  1mo
-vars 12
+vars 13
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
 vapor  1 0 vapour
+relhum  1 0 relhum
 ice    1 0 ice
 precip 1 0 precip
 eva 1 0 eva
@@ -147,11 +148,12 @@ undef 9.e27
 xdef  96 linear 0 3.75
 ydef  48 linear -88.125 3.75
 tdef $MONTHS linear 15jan0  1mo
-vars 12
+vars 13
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
 vapor  1 0 vapour
+relhum  1 0 relhum
 ice    1 0 ice
 precip 1 0 precip
 eva 1 0 eva
@@ -170,11 +172,12 @@ xdef 12 linear 0 3.75
 ydef  1 linear -88.125 3.75
 zdef  $YEARS linear 1 1
 tdef  1 linear 15jan0  1yr
-vars 12
+vars 13
 tsurf  1 0 tsurf
 tatmos 1 0 tatmos
 tocean 1 0 tocean
 vapor  1 0 vapour
+relhum  1 0 relhum
 ice    1 0 ice
 precip 1 0 precip
 eva 1 0 eva
