@@ -441,6 +441,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      omegastdclim= omegastdclim + omegastdclim_anom_cc
      wsclim     = wsclim + wsclim_anom_cc
      dqevaclim   = dqevaclim + dqeva_anom_cc
+     dqprecipclim=  dqprecipclim + dqprecip_anom_cc
   end if
   if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then ! change boundary conditions for ENSO forcing
      Tclim      = Tclim + Tclim_anom_enso
@@ -796,9 +797,8 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
   where(dq_rain >= 0. ) dq_rain = 0.  !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
 
 ! Forced precipitation
-  if (log_rain == 5) then
+  if (log_rain == 5 .or. log_rain == 6) then
     dq_rain(:,:) = dqprecipclim(:,:,ityr)
-    !print*, dq_rain(48,26)
 
     dq_rain_q(:,:)    = 0.
     dq_rain_rq(:,:)   = 0.
@@ -1860,6 +1860,7 @@ subroutine forcing(it, year, CO2, Tsurf)
 ! Forced Climate Change run
   if( log_exp .eq. 230) then
     CO2   = 2*340.
+    !CO2   = 1250 !RCP85
 
     if (log_tsurf_ext .eq. 2 .or. log_tsurf_ext .eq. 3 ) then
       Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition

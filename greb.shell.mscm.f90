@@ -119,12 +119,13 @@ if ( log_exp .eq. 230 ) then
     if (log_omegastd_ext .eq. 2) read(35,rec=i) omegastdclim_anom_cc(:,:,i)
     if (log_hwind_ext .eq. 2) read(36,rec=i) wsclim_anom_cc(:,:,i)
     if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
-    if (log_precip .eq. 5) read(38,rec=i) dqprecip_anom_cc(:,:,i)
+    if (log_rain .eq. 5) read(38,rec=i) dqprecip_anom_cc(:,:,i)
   end do
   if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.014 * SUM(Tclim_anom_cc)/SIZE(Tclim_anom_cc)
-  dqeva_anom_cc = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
 
-  dqprecip_anom_cc = dqprecip_anom_cc / rqviwv
+  ! Change of units and/or sign
+  dqeva_anom_cc    = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
+  dqprecip_anom_cc = -dqprecip_anom_cc / r_qviwv
 
 end if
 
