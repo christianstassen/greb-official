@@ -204,7 +204,7 @@ module mo_physics
 ! declare climate fields
   real, dimension(xdim,ydim)          ::  z_topo, glacier,z_ocean
   real, dimension(xdim,ydim,nstep_yr) ::  Tclim, uclim, vclim, omegaclim=0., omegastdclim=0., wsclim
-  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevaclim
+  real, dimension(xdim,ydim,nstep_yr) ::  qclim, mldclim, Toclim, cldclim, dqevaclim, dqprecipclim
   real, dimension(xdim,ydim,nstep_yr) ::  TF_correct, qF_correct, ToF_correct, swetclim, dTrad
   real, dimension(ydim,nstep_yr)      ::  sw_solar, sw_solar_ctrl, sw_solar_scnr
   real, dimension(xdim,ydim)          ::  co2_part      = 1.0
@@ -223,6 +223,7 @@ module mo_physics
   real, dimension(xdim,ydim,nstep_yr) ::   omegastdclim_anom_cc   = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   wsclim_anom_cc      = 0.
   real, dimension(xdim,ydim,nstep_yr) ::   dqeva_anom_cc      = 0.
+  real, dimension(xdim,ydim,nstep_yr) ::   dqprecip_anom_cc      = 0.
 
 ! declare constant fields
   real, dimension(xdim,ydim)          ::  cap_surf
@@ -440,6 +441,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      omegastdclim= omegastdclim + omegastdclim_anom_cc
      wsclim     = wsclim + wsclim_anom_cc
      dqevaclim   = dqevaclim + dqeva_anom_cc
+     dqprecipclim=  dqprecipclim + dqprecip_anom_cc
   end if
   if ( log_exp .eq. 240 .or. log_exp .eq. 241 ) then ! change boundary conditions for ENSO forcing
      Tclim      = Tclim + Tclim_anom_enso
@@ -454,15 +456,6 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
   Ts1 = Ts_ini; Ta1 = Ta_ini; q1 = q_ini; To1 = To_ini                     ! initialize fields
   year=1950.; CO2=340.0; mon=1; irec=0; Tmm=0.; Tamm=0.; qmm=0.; apmm=0.;
   if (log_exp .ge. 35 .and. log_exp .le. 37) year=1.
-
-! where( omegaclim > 0. )
-!   omegaclim = omegaclim * 0.9
-! elsewhere (omegaclim < 0. )
-!   omegaclim = omegaclim * 1.1
-! end where
-! do n=1,nstep_yr
-!   omegaclim(:,:,n) = omegaclim(:,:,n) - SUM(omegaclim(:,:,n))/SIZE(omegaclim(:,:,n))
-! end do
 
   do it=1, time_scnr*nstep_yr                                              ! main time loop
      call forcing(it, year, CO2, Ts1)
@@ -731,7 +724,8 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
 &                           ce, cq_latent, cq_rain, z_air, r_qviwv, log_exp, &
 &                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp,    &
 &                           omegaclim, omegastdclim, wsclim,  wz_vapor,      &
-&                           c_q, c_rq, c_omega, c_omegastd, log_eva, dqevaclim                   ! Rainfall parameters
+&                           c_q, c_rq, c_omega, c_omegastd, log_eva, log_rain, &
+&                           dqevaclim, dqprecipclim
 
 ! declare temporary fields
   real, dimension(xdim,ydim)  :: Tsurf, Tskin, q, Qlat, Qlat_air, qs, dq_eva, &
@@ -801,6 +795,16 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
   dq_rain      = dq_rain_q + dq_rain_rq + dq_rain_w + dq_rain_wstd
   !where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
   where(dq_rain >= 0. ) dq_rain = 0.  !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
+
+! Forced precipitation
+  if (log_rain == 5 .or. log_rain == 6) then
+    dq_rain(:,:) = dqprecipclim(:,:,ityr)
+
+    dq_rain_q(:,:)    = 0.
+    dq_rain_rq(:,:)   = 0.
+    dq_rain_w(:,:)    = 0.
+    dq_rain_wstd(:,:) = 0.
+  end if
 
 ! latent heat flux atmos
   Qlat_air = -dq_rain*cq_latent*r_qviwv
@@ -1845,17 +1849,18 @@ subroutine forcing(it, year, CO2, Tsurf)
 
 ! IPCC RCP scenarios
   if( log_exp .ge. 96 .and. log_exp .le. 99 ) then ! IPCC RCP scenarios
-      if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
+      if(mod(it,nstep_yr) .eq. 1) read (28,*) t, CO2
   end if
 
 ! own CO2 scenario
   if( log_exp .eq. 100 ) then
-      if(mod(it,nstep_yr) .eq. 1) read (26,*) t, CO2
+      if(mod(it,nstep_yr) .eq. 1) read (28,*) t, CO2
   end if
 
 ! Forced Climate Change run
   if( log_exp .eq. 230) then
     CO2   = 2*340.
+    !CO2   = 1250 !RCP85
 
     if (log_tsurf_ext .eq. 2 .or. log_tsurf_ext .eq. 3 ) then
       Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition

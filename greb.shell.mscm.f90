@@ -39,6 +39,7 @@ if ( log_clim .eq. 0 ) then ! ERA-Interim
   !open(23,file='../input/erainterim.omega.vertmean.nomean.clim.bin', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(24,file='../input/erainterim.omega_std.vertmean.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(25,file='../input/erainterim.evaporation.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(26,file='../input/gpcp.precipitation.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
 else if ( log_clim .eq. 1 ) then ! NCEP
   open(11,file='../input/ncep.tsurf.1948-2007.clim.bin',  	ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(12,file='../input/ncep.zonal_wind.850hpa.clim.bin',      ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
@@ -70,14 +71,10 @@ do n=1,nstep_yr
    if (log_omega_ext .ge. 1)    read(23,rec=n) omegaclim(:,:,n)
    if (log_omegastd_ext .ge. 1) read(24,rec=n) omegastdclim(:,:,n)
    read(25,rec=n) dqevaclim(:,:,n)
+   read(26,rec=n) dqprecipclim(:,:,n)
 end do
 
-!Subtract the annual field mean
-print*, SUM(omegaclim)/SIZE(omegaclim)
-! do n=1,nstep_yr
-!    if (log_omega_ext .gt. 1) omegaclim(:,:,n) = omegaclim(:,:,n) - SUM(omegaclim(:,:,n))/SIZE(omegaclim(:,:,n))
-! end do
-! print*, SUM(omegaclim)/SIZE(omegaclim)
+dqprecipclim = -dqprecipclim / 86400 / r_qviwv ! mm day-1 to kg kg-1 s-1
 
 ! read fix data
 read(19,rec=1)  z_topo
@@ -86,13 +83,13 @@ read(21,rec=1)  sw_solar_ctrl
 
 ! read scenario solar forcing for paleo scenarios or oribital forcings
 if ( log_exp .eq. 30 .or. log_exp .eq. 31 .or. log_exp .eq. 35 .or. log_exp .eq. 36 ) then
-open(25,file='solar_scenario', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*ydim*nstep_yr)
-read(25,rec=1)  sw_solar_scnr
+open(27,file='solar_scenario', ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*ydim*nstep_yr)
+read(27,rec=1)  sw_solar_scnr
 end if
 
 ! open CO2 forcing file for IPCC RCP scenarios (CO2 is read in forcing subroutine)
 if ( log_exp .ge. 96 .and. log_exp .le. 100 ) then
-open(26,file='co2forcing')
+open(28,file='co2forcing')
 end if
 
 ! open external forcing for climate change (ensemble mean) (it is read in forcing subroutine)
@@ -112,6 +109,8 @@ if ( log_exp .eq. 230 ) then
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   open(37,file='../input/cmip5.evaporation.rcp85.ensmean.forcing.new.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(38,file='../input/cmip5.precipitation.rcp85.ensmean.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   do i=1,nstep_yr ! Read in the anomalies
     if (log_tsurf_ext .eq. 2) read(31,rec=i) Tclim_anom_cc(:,:,i)
     if (log_hwind_ext .eq. 2) read(32,rec=i) uclim_anom_cc(:,:,i)
@@ -120,17 +119,13 @@ if ( log_exp .eq. 230 ) then
     if (log_omegastd_ext .eq. 2) read(35,rec=i) omegastdclim_anom_cc(:,:,i)
     if (log_hwind_ext .eq. 2) read(36,rec=i) wsclim_anom_cc(:,:,i)
     if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
+    if (log_rain .eq. 5) read(38,rec=i) dqprecip_anom_cc(:,:,i)
   end do
   if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.014 * SUM(Tclim_anom_cc)/SIZE(Tclim_anom_cc)
-  dqeva_anom_cc = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
 
-  !Subtract the annual field mean
-  print*, SUM(omegaclim_anom_cc)/SIZE(omegaclim_anom_cc)
-  ! do n=1,nstep_yr
-  !    if (log_omega_ext .gt. 1) omegaclim_anom_cc(:,:,n) = omegaclim_anom_cc(:,:,n) - &
-  !    & SUM(omegaclim_anom_cc(:,:,n))/SIZE(omegaclim_anom_cc(:,:,n))
-  ! end do
-  ! print*, SUM(omegaclim_anom_cc)/SIZE(omegaclim_anom_cc)
+  ! Change of units and/or sign
+  dqeva_anom_cc    = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
+  dqprecip_anom_cc = -dqprecip_anom_cc / r_qviwv
 
 end if
 
