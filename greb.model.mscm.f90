@@ -1859,12 +1859,11 @@ subroutine forcing(it, year, CO2, Tsurf)
 
 ! Forced Climate Change run
   if( log_exp .eq. 230) then
-    CO2   = 2*340.
-    !CO2   = 1250 !RCP85
+    ! CO2   = 2*340.
+    CO2   = 1250 !RCP85
 
-    if (log_tsurf_ext .eq. 2 .or. log_tsurf_ext .eq. 3 ) then
-      Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
-    end if
+    if (log_tsurf_ext .eq. 2 .or. log_tsurf_ext .eq. 3 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
+    if (log_tsurf_ext .eq. 4) Tsurf = Tclim(:,:,ityr) + 4.19 ! Add uniform warming
   end if
 ! Forced ENSO run
   if( log_exp .eq. 240 .or. log_exp .eq. 241 ) Tsurf = Tclim(:,:,ityr)  ! Keep temp on external boundary condition

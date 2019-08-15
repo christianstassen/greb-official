@@ -121,7 +121,7 @@ if ( log_exp .eq. 230 ) then
     if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
     if (log_rain .eq. 5) read(38,rec=i) dqprecip_anom_cc(:,:,i)
   end do
-  if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.014 * SUM(Tclim_anom_cc)/SIZE(Tclim_anom_cc)
+  if (log_eva .eq. 4) dqeva_anom_cc = -dqevaclim * 0.0195 * 4.19 ! 1.95% per K and 4.19 Kelvin of warming
 
   ! Change of units and/or sign
   dqeva_anom_cc    = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
