@@ -88,6 +88,10 @@
 !            (surface temperature, hodrizontal winds and omega) of the ERA-Interim
 !            composite mean response
 !
+!  log_exp = 250 run a mean experiment with forced boundary conditions
+!            (surface temperature, hodrizontal winds and omega) of the CMIP5
+!            pi-control anomalies
+!
 !  log_exp = 100 run model with your own CO2 input file
 !
 !+++++++++++++++++++++++++++++++++++++++
@@ -194,6 +198,9 @@ module mo_physics
   parameter( grav      = 9.81  )                   ! gravitational acceleration [m/s^2]
   real :: r_qviwv   = 2.6736e3                     ! regres. factor between viwv and q_air  [kg/m^3]
 
+  ! Model name
+  character(len=50) :: model                       ! Model name for decon mean (mimicking)
+
   ! physical paramter (rainfall)
   real :: c_q, c_rq, c_omega, c_omegastd
 
@@ -243,7 +250,7 @@ module mo_physics
 &                      log_topo_drsp, log_cloud_drsp, log_humid_drsp, log_hydro_drsp,   &
 &                      log_ocean_drsp, log_ice, log_hdif, log_hadv, log_vdif, log_vadv, &
 & 		                 S0_var, dradius, log_rain, log_eva, log_conv, log_clim,          &
-&                      log_tsurf_ext, log_hwind_ext, log_omega_ext, log_omegastd_ext
+&                      log_tsurf_ext, log_hwind_ext, log_omega_ext, log_omegastd_ext, model
 
 end module mo_physics
 
@@ -449,6 +456,16 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      vclim      = vclim + vclim_anom_enso
      omegaclim  = omegaclim + omegaclim_anom_enso
      wsclim     = wsclim + wsclim_anom_enso
+  end if
+  if ( log_exp .eq. 250 ) then ! change boundary conditions for climate change forcing
+     Tclim      = Tclim + Tclim_anom_cc
+     uclim      = uclim + uclim_anom_cc
+     vclim      = vclim + vclim_anom_cc
+     omegaclim  = omegaclim + omegaclim_anom_cc
+     omegastdclim= omegastdclim + omegastdclim_anom_cc
+     wsclim     = wsclim + wsclim_anom_cc
+     dqevaclim   = dqevaclim + dqeva_anom_cc
+     dqprecipclim=  dqprecipclim + dqprecip_anom_cc
   end if
 
   print*,'% SCENARIO EXP: ',log_exp,'  time=', time_scnr,'yr'
@@ -1868,6 +1885,12 @@ subroutine forcing(it, year, CO2, Tsurf)
 ! Forced ENSO run
   if( log_exp .eq. 240 .or. log_exp .eq. 241 ) Tsurf = Tclim(:,:,ityr)  ! Keep temp on external boundary condition
 
+  ! Forced pi-control run
+    if( log_exp .eq. 250) then
+      CO2   = 1*340.
+
+      if (log_tsurf_ext .eq. 2 .or. log_tsurf_ext .eq. 3 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition
+    end if
 
 end subroutine forcing
 

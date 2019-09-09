@@ -39,6 +39,14 @@ set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf;     3=
 
 set LOG_RAIN = ${17}
 
+echo $LOG_EVA
+echo $LOG_OMEGA_EXT
+echo $LOG_OMEGASTD_EXT
+echo $LOG_HWIND_EXT
+echo $LOG_CONV
+echo $LOG_TSURF_EXT
+echo $LOG_RAIN
+
 # length of sensitivity experiment in years
 set YEARS=25
 
