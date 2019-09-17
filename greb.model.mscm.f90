@@ -457,7 +457,7 @@ if ( log_exp .ne. 1 .or. time_scnr .ne. 0 ) then
      omegaclim  = omegaclim + omegaclim_anom_enso
      wsclim     = wsclim + wsclim_anom_enso
   end if
-  if ( log_exp .eq. 250 ) then ! change boundary conditions for climate change forcing
+  if ( log_exp .eq. 250 .or. log_exp .eq. 251) then ! change boundary conditions for climate change forcing
      Tclim      = Tclim + Tclim_anom_cc
      uclim      = uclim + uclim_anom_cc
      vclim      = vclim + vclim_anom_cc
@@ -1886,7 +1886,7 @@ subroutine forcing(it, year, CO2, Tsurf)
   if( log_exp .eq. 240 .or. log_exp .eq. 241 ) Tsurf = Tclim(:,:,ityr)  ! Keep temp on external boundary condition
 
   ! Forced pi-control run
-    if( log_exp .eq. 250) then
+    if( log_exp .eq. 250 .or. log_exp .eq. 251) then
       CO2   = 1*340.
 
       if (log_tsurf_ext .eq. 2 .or. log_tsurf_ext .eq. 3 ) Tsurf = Tclim(:,:,ityr) ! Keep temp on external boundary condition

@@ -16,6 +16,8 @@ if (-d work ) rm -f work/*
 # BEGIN USER INPUT! #
 #####################
 
+set EXP = ${19}
+
 # switches to turn on (1) or off (0) the different processes
 # see mscm.dkrz.de => deconstruct 2xco2 response for details
 set LOG_TOPO  = ${10}	# topography
@@ -39,10 +41,11 @@ set LOG_TSURF_EXT  = ${11} # 0 = ???;    1=greb-tsurf;    2=forced_tsurf;     3=
 
 set LOG_RAIN = ${17}
 
-set MOD_NAME = 'ACCESS1-0'
+set MOD_NAME = ${18}
+echo $MOD_NAME
 
 # length of sensitivity experiment in years
-set YEARS=25
+set YEARS=5
 
 ### compile GREB model (uncomment one of these three options)
 ### gfortran compiler (Linux (e.g. Ubuntu), Unix or MacBook Air)
@@ -62,7 +65,7 @@ setenv KMP_AFFINITY verbose,none
 
 set NUMBER=${LOG_OCEAN}${LOG_VADV}${LOG_VDIF}${LOG_HYDRO}${LOG_ICE}${LOG_HADV}${LOG_HDIF}${LOG_HUMID}${LOG_CLOUD}${LOG_TOPO}
 set HYDRO_NUMBER=${LOG_TSURF_EXT}${LOG_EVA}${LOG_OMEGA_EXT}${LOG_OMEGASTD_EXT}${LOG_HWIND_EXT}${LOG_CONV}${LOG_RAIN}
-set FILENAME=${NUMBER}HYDRO${HYDRO_NUMBER}.${MOD_NAME}
+set FILENAME=${NUMBER}HYDRO${HYDRO_NUMBER}.EXP${EXP}.${MOD_NAME}
 echo 'EXPERIMENT: '${FILENAME}
 
 # move complied files to work directory
@@ -80,7 +83,7 @@ time_ctrl = 3 		! length of control run [yrs]
 time_scnr = $YEARS ! length of scenario run [yrs]
 /
 &PHYSICS
-log_exp = 250 		! deconstruct mean (mimicking)
+log_exp = $EXP 		! deconstruct mean (mimicking)
 log_topo_drsp   = $LOG_TOPO
 log_cloud_drsp  = $LOG_CLOUD
 log_humid_drsp  = $LOG_HUMID

@@ -158,22 +158,58 @@ end if ! ENSO forcing
 
 ! open external forcing for climate change (ensemble mean) (it is read in forcing subroutine)
 if ( log_exp .eq. 250 ) then
-  print*, '../input/cmip5.tsurf.piControl.' // trim(adjustl(model)) //'.forcing.bin'
-  open(31,file='../input/cmip5.tsurf.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(31,file='../input/cmip5.tsurf.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(32,file='../input/cmip5.zonal.wind.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(32,file='../input/cmip5.zonal.wind.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(33,file='../input/cmip5.meridional.wind.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(33,file='../input/cmip5.meridional.wind.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(34,file='../input/cmip5.omega.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(34,file='../input/cmip5.omega.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(35,file='../input/cmip5.omegastd.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(35,file='../input/cmip5.omegastd.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED',RECL=ireal*xdim*ydim)
-!   open(36,file='../input/cmip5.windspeed.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+!   open(36,file='../input/cmip5.windspeed.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 ! & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(37,file='../input/cmip5.evaporation.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(37,file='../input/cmip5.evaporation.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
-  open(38,file='../input/cmip5.precipitation.piControl.' // trim(adjustl(model)) //'.forcing.bin', &
+  open(38,file='../input/cmip5.precipitation.piControl.anomaly.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  do i=1,nstep_yr ! Read in the anomalies
+    if (log_tsurf_ext .eq. 2) read(31,rec=i) Tclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 2) read(32,rec=i) uclim_anom_cc(:,:,i)
+    if (log_hwind_ext .eq. 2) read(33,rec=i) vclim_anom_cc(:,:,i)
+    if (log_omega_ext .eq. 2) read(34,rec=i) omegaclim_anom_cc(:,:,i)
+    if (log_omegastd_ext .eq. 2) read(35,rec=i) omegastdclim_anom_cc(:,:,i)
+    ! if (log_hwind_ext .eq. 2) read(36,rec=i) wsclim_anom_cc(:,:,i)
+    if (log_eva .eq. 2) read(37,rec=i) dqeva_anom_cc(:,:,i)
+    if (log_rain .eq. 5) read(38,rec=i) dqprecip_anom_cc(:,:,i)
+  end do
+
+  ! Change of units and/or sign
+  dqeva_anom_cc    = -dqeva_anom_cc ! Because of the sign flip in the hydro routine
+  dqprecip_anom_cc = -dqprecip_anom_cc / r_qviwv
+
+end if
+
+
+! open external forcing for climate change (ensemble mean) (it is read in forcing subroutine)
+if ( log_exp .eq. 251 ) then
+  print*, '../input/cmip5.tsurf.rcp85.' // trim(adjustl(model)) //'.forcing.bin'
+  open(31,file='../input/cmip5.tsurf.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(32,file='../input/cmip5.zonal.wind.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(33,file='../input/cmip5.meridional.wind.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(34,file='../input/cmip5.omega.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(35,file='../input/cmip5.omegastd.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED',RECL=ireal*xdim*ydim)
+!   open(36,file='../input/cmip5.windspeed.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+! & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(37,file='../input/cmip5.evaporation.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
+& ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
+  open(38,file='../input/cmip5.precipitation.rcp85.response.' // trim(adjustl(model)) //'.forcing.bin', &
 & ACCESS='DIRECT',FORM='UNFORMATTED', RECL=ireal*xdim*ydim)
   do i=1,nstep_yr ! Read in the anomalies
     if (log_tsurf_ext .eq. 2) read(31,rec=i) Tclim_anom_cc(:,:,i)
