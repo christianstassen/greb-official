@@ -77,6 +77,11 @@ log_hdif   	= $LOG_HDIF
 log_hadv   	= $LOG_HADV
 log_vdif   	= $LOG_VDIF
 log_vadv   	= $LOG_VADV
+
+log_conv    = -1
+log_rain    = -1
+log_eva     = -1
+log_clim    = -1
 /
 EOF
 
