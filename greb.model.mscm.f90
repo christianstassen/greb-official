@@ -775,7 +775,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
     where(z_topo > 0. ) abswind = sqrt(abswind**2 + 2.0**2) !< land turbulent wind
     where(z_topo < 0. ) abswind = sqrt(abswind**2 + 3.0**2) !< ocean turbulent wind
     Qlat   = (q-qs)*abswind*cq_latent*rho_air*ce*swetclim(:,:,ityr) ! latend heat flux
-  else if ( log_eva == 0 ) then
+  else if ( log_eva == -2 ) then
     Qlat = 0.
 !  else if ( log_eva == 1 ) then
 !    where(z_topo > 0. ) abswind = sqrt(abswind**2 + 144.**2) ! land turbulent wind
@@ -788,7 +788,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain, dq_rain_q, dq_rain_r
 !    where(z_topo <= 0. ) abswind = sqrt(abswind**2 + 4.0**2) ! ocean turbulent wind
 !    where(z_topo > 0. )  Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.56*ce*swetclim(:,:,ityr) ! latend heat flux land
 !    where(z_topo <= 0. ) Qlat   = (q-qs)*abswind*cq_latent*rho_air*0.79*ce*swetclim(:,:,ityr) ! latend heat flux ocean
-  else if ( log_eva == 1 ) then
+  else if ( log_eva == 0 ) then
     where(z_topo > 0. )  Tskin = Tsurf + 5. ! skin temperature land
     where(z_topo <= 0. ) Tskin = Tsurf + 1. ! skin temperature ocean
     qs = 3.75e-3*exp(17.08085*(Tskin-273.15)/(Tskin-273.15+234.175)) ! re-calculate saturation pressure
