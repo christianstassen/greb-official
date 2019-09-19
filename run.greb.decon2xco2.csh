@@ -99,12 +99,15 @@ xdef  96 linear 0 3.75
 ydef  48 linear -88.125 3.75
 zdef   1 linear 1 1
 tdef 600 linear 15jan0  1mo
-vars 5
-tsurf  1 0 data 1
-tatmos 1 0 data 1
-tocean 1 0 data 1
-vapor  1 0 data 1
-ice    1 0 data 1
+vars 8
+tsurf  1 0 tsurf
+tatmos 1 0 tatmos
+tocean 1 0 tocean
+vapor  1 0 vapour
+ice    1 0 ice
+precip 1 0 precip
+eva 1 0 eva
+qcrcl 1 0 qcrcl
 endvars
 EOF
 
@@ -115,12 +118,15 @@ xdef 12 linear 0 3.75
 ydef  1 linear -88.125 3.75
 zdef  50 linear 1 1
 tdef  1 linear 15jan0  1yr
-vars 5
-tsurf  50 0 data 1
-tatmos 50 0 data 1
-tocean 50 0 data 1
-vapor  50 0 data 1
-ice    50 0 data 1
+vars 8
+tsurf  50 0 tsurf
+tatmos 50 0 tatmos
+tocean 50 0 tocean
+vapor  50 0 vapour
+ice    50 0 ice
+precip 50 0 precip
+eva 50 0 eva
+qcrcl 50 0 qcrcl
 endvars
 EOF
 
