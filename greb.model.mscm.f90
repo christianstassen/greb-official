@@ -693,7 +693,7 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 &                           ce, cq_latent, cq_rain, z_air, r_qviwv, log_exp, &
 &                           log_atmos_dmc, log_hydro_dmc, log_hydro_drsp,    &
 &                           omegaclim, omegastdclim, wsclim,  wz_vapor,      &
-&                           c_q, c_rq, c_omega, c_omegastd                   ! Rainfall parameters
+&                           c_q, c_rq, c_omega, c_omegastd, log_eva, log_rain      ! Rainfall parameters
 
 ! declare temporary fields
   real, dimension(xdim,ydim)  :: Tsurf, Tskin, q, Qlat, Qlat_air, qs, dq_eva, &
@@ -751,7 +751,9 @@ subroutine hydro(Tsurf, q, Qlat, Qlat_air, dq_eva, dq_rain)
 ! precipitation -> Eq. 11 in Stassen et al 2019
 ! Parameters in unused terms are set to zero
   dq_rain = (c_q + c_rq*rq + c_omega*omegaclim(:,:,ityr) + c_omegastd*omegastdclim(:,:,ityr))*cq_rain*q
-  where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
+  if (log_rain == 1) then
+    where(dq_rain >= -0.0015 / (wz_vapor * r_qviwv * 86400.)) dq_rain = -0.0015 / (wz_vapor * r_qviwv * 86400.) !Avoid negative rainfall (dq_rain is negative means positive rainfall!)
+  end if
 
 ! latent heat flux atmos
   Qlat_air = -dq_rain*cq_latent*r_qviwv
